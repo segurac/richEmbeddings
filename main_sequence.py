@@ -15,23 +15,24 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data as data
 import torchvision.datasets as datasets
-import torchvision.models as models
-import torchvision.transforms as transforms
-from PIL import Image
-import data_load
-import seq_model
+#import torchvision.models as models
+#import torchvision.transforms as transforms
+#from PIL import Image
+from models.single_modality.word_embeddings import load_data as w_load_data
+from models.single_modality.word_embeddings import seq_model as w_seq_model
 
-model_names = sorted(name for name in models.__dict__ if name.islower() and not name.startswith("__"))
-model_names.append('VGG_FACE')
+
+model_names = []
+model_names.append('words_embeddings')
 
 parser = argparse.ArgumentParser(description='PyTorch Cats vs Dogs fine-tuning example')
 parser.add_argument('data', metavar='DIR', help='path to dataset')
 parser.add_argument(
     '--arch',
     metavar='ARCH',
-    default='resnet101',
+    default='words_embeddings',
     choices=model_names,
-    help='model architecture: ' + ' | '.join(model_names) + ' (default: resnet101)')
+    help='model architecture: ' + ' | '.join(model_names) + ' (default: words_embeddings)')
 parser.add_argument('--workers', default=4, type=int, metavar='N', help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=90, type=int, metavar='N', help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N', help='manual epoch number (useful on restarts)')
@@ -59,11 +60,46 @@ def main():
     global args, best_prec1
     args = parser.parse_args()
 
-    # create model
-    if args.resume2:
-        model = seq_model.Vgg_face_sequence_model(nhid=512, nlayers=2, dropout=0.5, pretrained_model_path = args.resume2)
-    else:
-        model = seq_model.Vgg_face_sequence_model(nhid=512, nlayers=2, dropout=0.5)
+    if args.arch == "words_embeddings":
+        load_data = w_load_data
+        
+    # Data loading code
+    train_loader = data.DataLoader(
+                    load_data.TranscriptionsReader('/mnt/3T-NAS/Databases/jobScreening_cvpr17/train/transcription_training.pkl',
+                                                    '/mnt/3T-NAS/Databases/jobScreening_cvpr17/train/annotation_training.pkl'), 
+                        batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, 
+                        collate_fn = load_data.TranscriptionsReader.my_collate
+                    )
+
+
+    train_loader = data.DataLoader(
+                    load_data.TranscriptionsReader('/mnt/3T-NAS/Databases/jobScreening_cvpr17/train/transcription_training.pkl',
+                                                    '/mnt/3T-NAS/Databases/jobScreening_cvpr17/train/annotation_training.pkl'), 
+                        batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, 
+                        collate_fn = load_data.TranscriptionsReader.my_collate
+                    )
+
+    val_loader = data.DataLoader(
+                    load_data.TranscriptionsReader('/mnt/3T-NAS/Databases/jobScreening_cvpr17/train/transcription_training.pkl',
+                                                    '/mnt/3T-NAS/Databases/jobScreening_cvpr17/train/annotation_training.pkl'), 
+                        batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, 
+                        collate_fn = load_data.TranscriptionsReader.my_collate
+                    )
+
+    test_loader = data.DataLoader(
+                    load_data.TranscriptionsReader('/mnt/3T-NAS/Databases/jobScreening_cvpr17/train/transcription_training.pkl',
+                                                    '/mnt/3T-NAS/Databases/jobScreening_cvpr17/train/annotation_training.pkl'), 
+                        batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, 
+                        collate_fn = load_data.TranscriptionsReader.my_collate
+                    )
+
+
+
+
+    if args.arch == "words_embeddings":
+        model = w_seq_model.Word_Embeddings_sequence_model(vocab_size=len(train_loader.dataset.word2id),embedding_size=32,
+            nhid=256, nlayers=2)
+
     #model = torch.nn.DataParallel(model).cuda()
     if USE_CUDA:
         model = model.cuda()
@@ -77,77 +113,11 @@ def main():
             best_prec1 = checkpoint['best_prec1']
             model.load_state_dict(checkpoint['state_dict'])
             print("=> loaded checkpoint '{}' (epoch {})".format(args.evaluate, checkpoint['epoch']))
-            
-            
-            for m in model.modules():
-                print(m)
-                if isinstance(m, nn.Linear):
-                    if next(m.parameters()).size()[0] == 64:
-                        print("making last layer of feature extractor trainable")
-                        for p in m.parameters():
-                            p.requires_grad = False
-                        break
-
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
     cudnn.benchmark = True
 
-    # Data loading code
-    #traindir = os.path.join(args.data, 'train')       
-
-    #valdir = os.path.join(args.data, 'val')
-    #testdir = os.path.join(args.data, 'test')
-    #traindir ='/mnt/8T-NAS/data/2017_EmotiW/Train_AFEW/AlignedFaces_LBPTOP_Points/Faces/'
-    traindir = '/disks/md0-4T/users/csp/2017_EmotiW/Train_AFEW/AlignedFaces_LBPTOP_Points/Faces'
-    #valdir ='/mnt/8T-NAS/data/2017_EmotiW/Val_AFEW/AlignedFaces_LBPTOP_Points_Val/Faces/'
-    valdir = '/disks/md0-4T/users/csp/2017_EmotiW/Val_AFEW/AlignedFaces_LBPTOP_Points_Val/Faces'
-    #testdir ='/mnt/8T-NAS/data/2017_EmotiW/Val_AFEW/AlignedFaces_LBPTOP_Points_Val/Faces/'
-    testdir = '/disks/md0-4T/users/csp/2017_EmotiW/Val_AFEW/AlignedFaces_LBPTOP_Points_Val/Faces'
-
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
-    train_loader = data.DataLoader(
-        data_load.ImageFolderSequences(traindir,
-                             transforms.Compose([
-                                 transforms.Scale(224),
-                                 transforms.Pad(16),
-                                 transforms.RandomSizedCrop(224),
-                                 transforms.RandomHorizontalFlip(),
-                                 transforms.ToTensor(),
-                                 normalize,
-                             ])),
-        batch_size=args.batch_size,
-        shuffle=True,
-        num_workers=args.workers,
-        pin_memory=False, collate_fn=data_load.my_collate_percentile)
-
-    val_loader = data.DataLoader(
-        data_load.ImageFolderSequences(valdir,
-                             transforms.Compose([
-                                 transforms.Scale(224),
-                                 transforms.Pad(16),
-                                 transforms.CenterCrop(224),
-                                 transforms.ToTensor(),
-                                 normalize,
-                             ])),
-        batch_size=int(args.batch_size/1),
-        shuffle=True,
-        num_workers=args.workers,
-        pin_memory=True, collate_fn=data_load.my_collate_percentile)
-
-    test_loader = data.DataLoader(
-        data_load.ImageFolderSequences(testdir,
-                        transforms.Compose([
-                            transforms.Scale(224),
-                            #transforms.CenterCrop(224),
-                            transforms.ToTensor(),
-                            normalize,
-                        ])),
-        batch_size=1,
-        shuffle=False,
-        num_workers=1,
-        pin_memory=False, collate_fn=data_load.my_collate_percentile)
 
     if args.test:
         print("Testing the model and generating a output csv for submission")
@@ -166,7 +136,8 @@ def main():
     else:
         class_weight = None
 
-    criterion = nn.CrossEntropyLoss(weight=class_weight)
+    #criterion = nn.CrossEntropyLoss(weight=class_weight)
+    criterion = nn.MSELoss()
     if USE_CUDA:
         criterion.cuda()
 
@@ -219,14 +190,14 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # measure data loading time
         data_time.update(time.time() - end)
 
-        target = target[:,0]
         if USE_CUDA:
             target = target.cuda(async=True)
         #print(images)
         #image_var = torch.autograd.Variable(images)
         image_var = images
+        #print(images.size()[0])
         label_var = torch.autograd.Variable(target)
-        hidden = model.init_hidden(args.batch_size)
+        hidden = model.init_hidden(images.size()[0])
         if USE_CUDA:
             hidden = (hidden[0].cuda(), hidden[1].cuda())
         #print(label_var)
@@ -238,9 +209,10 @@ def train(train_loader, model, criterion, optimizer, epoch):
         loss = criterion(y_pred, label_var)
 
         # measure accuracy and record loss
-        prec1, prec1 = accuracy(y_pred.data, target, topk=(1, 1))
+        #prec1, prec1 = accuracy(y_pred.data, target, topk=(1, 1))
         losses.update(loss.data[0], images.size(0))
-        acc.update(prec1[0], images.size(0))
+        #acc.update(prec1[0], images.size(0))
+        acc.update(0.5, images.size(0))
 
         # compute gradient and do SGD step
         #optimizer.zero_grad()
@@ -286,7 +258,6 @@ def validate(val_loader, model, criterion):
     end = time.time()
     for i, (images, labels) in enumerate(val_loader):
         
-        labels = labels[:,0]
         if USE_CUDA:
             labels = labels.cuda(async=True)
         #print(images)
@@ -306,9 +277,10 @@ def validate(val_loader, model, criterion):
         loss = criterion(y_pred, label_var)
 
         # measure accuracy and record loss
-        prec1, temp_var = accuracy(y_pred.data, labels, topk=(1, 1))
+        #prec1, temp_var = accuracy(y_pred.data, labels, topk=(1, 1))
         losses.update(loss.data[0], images.size(0))
-        acc.update(prec1[0], images.size(0))
+        #acc.update(prec1[0], images.size(0))
+        acc.update( 0.5, images.size(0))
 
         # measure elapsed time
         batch_time.update(time.time() - end)
