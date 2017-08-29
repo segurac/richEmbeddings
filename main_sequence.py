@@ -173,7 +173,9 @@ def train(train_loader, model, criterion, optimizer, epoch):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
-    acc = AverageMeter()
+    accs = {}
+    for key in train_loader.dataset.traits:
+        accs[key] = AverageMeter()
     
     #import tracemalloc
     #tracemalloc.start()
@@ -212,7 +214,9 @@ def train(train_loader, model, criterion, optimizer, epoch):
         #prec1, prec1 = accuracy(y_pred.data, target, topk=(1, 1))
         losses.update(loss.data[0], images.size(0))
         #acc.update(prec1[0], images.size(0))
-        acc.update(0.5, images.size(0))
+        curr_accuracy = regression_accuracy(y_pred.data, target).cpu().numpy()[0]
+        for i, key in enumerate(train_loader.dataset.traits):
+            accs[key].update(curr_accuracy[i], images.size(0))
 
         # compute gradient and do SGD step
         #optimizer.zero_grad()
@@ -243,8 +247,14 @@ def train(train_loader, model, criterion, optimizer, epoch):
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Accuracy {acc.val:.3f} ({acc.avg:.3f})'.format(
-                      epoch, i, len(train_loader), batch_time=batch_time, data_time=data_time, loss=losses, acc=acc))
+                  'Interview Acc {interview.val:.3f} ({interview.avg:.3f})\t'
+                  'agreeableness {agreeableness.val:.3f} ({agreeableness.avg:.3f})\t'
+                  'conscientiousness {conscientiousness.val:.3f} ({conscientiousness.avg:.3f})\t'
+                  'extraversion {extraversion.val:.3f} ({extraversion.avg:.3f})\t'
+                  'neuroticism {neuroticism.val:.3f} ({neuroticism.avg:.3f})\t'
+                  'openness {openness.val:.3f} ({openness.avg:.3f})'
+                  .format(
+                      epoch, i, len(train_loader), batch_time=batch_time, data_time=data_time, loss=losses, interview=accs['interview'], agreeableness=accs['agreeableness'], conscientiousness=accs['conscientiousness'], extraversion=accs['extraversion'], neuroticism=accs['neuroticism'], openness=accs['openness'] ))
 
 
 def validate(val_loader, model, criterion):
@@ -416,6 +426,9 @@ def accuracy(y_pred, y_actual, topk=(1, )):
         res.append(correct_k.mul_(100.0 / batch_size))
 
     return res
+  
+def regression_accuracy(y_pred, y_actual):
+    return torch.mean(1.0 - torch.abs(y_pred-y_actual), dim=0)
 
 
 class TestImageFolder(data.Dataset):

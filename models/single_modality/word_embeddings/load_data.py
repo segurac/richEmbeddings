@@ -21,7 +21,7 @@ class TranscriptionsReader(data.Dataset):
             self.annotations = pickle.load(stream, encoding='latin1')
 
         self.videos = list(self.transcriptions.keys())
-        self.traits = self.annotations.keys()
+        self.traits = ["openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism", "interview"] #self.annotations.keys()
     
     
         self.word2id = {}
