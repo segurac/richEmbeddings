@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
-import VGG_FACE
 from torch.autograd import Variable
-import gc
 import numpy as np
 
 class Word_Embeddings_sequence_model(nn.Module):
@@ -22,11 +20,13 @@ class Word_Embeddings_sequence_model(nn.Module):
         #self.rnn = nn.RNN(64, nhid, nlayers, batch_first = True, bidirectional = False)
         #self.rnn = nn.LSTM(64, nhid, nlayers, batch_first = True, bidirectional = False)
 
-        #A different classifier for each personality traits, since they are not mutually exclusive
-        self.classifiers = []
-        for i in range(6):
-            self.classifiers.append( nn.Linear(nhid,1))
+        #BS
+        ##A different classifier for each personality trait, since they are not mutually exclusive
+        #self.classifiers = []
+        #for i in range(6):
+            #self.classifiers.append( nn.Linear(nhid,1))
     
+        self.classifier = nn.Linear(nhid,6)
 
 
 
@@ -60,16 +60,24 @@ class Word_Embeddings_sequence_model(nn.Module):
 
         ## feed to the RNN
         output, hidden = self.rnn(embeddings, hidden)
+        ## since we set batch_first=True, output size is (batch, seq_length, hidden_size * num_directions)
                 
         n_outputs = output.size()[1]
-        total_output = []
-        for classifier in self.classifiers:
-            outputs = []
-            for o in range(n_outputs):
-                outputs.append( classifier(output[:,o,:])  )
-            output = torch.mean(torch.stack(outputs, dim=2), dim=2).view(-1,1)
-            total_output.append(output)
-        final_output = torch.stack(total_output, dim=2).view(-1,6)
+        outputs = []
+        for o in range(n_outputs):
+            outputs.append( self.classifier(output[:,o,:])  )
+        final_output = torch.mean(torch.stack(outputs, dim=2), dim=2).view(-1,6)
+
+        
+        
+        #total_output = []
+        #for classifier in self.classifiers:
+            #outputs = []
+            #for o in range(n_outputs):
+                #outputs.append( classifier(output[:,o,:])  )
+            #output = torch.mean(torch.stack(outputs, dim=2), dim=2).view(-1,1)
+            #total_output.append(output)
+        #final_output = torch.stack(total_output, dim=2).view(-1,6)
         return final_output
       
     def init_hidden(self, bsz):
