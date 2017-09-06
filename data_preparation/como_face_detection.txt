@@ -1,0 +1,2 @@
+docker run -it --rm -v /mnt/3T-NAS/:/tmp/gremlin -v /home/csp/repo/NewFrAPI/build/list_of_video_files_train.txt:/tmp/list_of_video_files_train.txt dockerhub.hi.inet/speech/face_detection /facedetection/bin/alignFaceFromVideo /tmp/list_of_video_files_train.txt /tmp/gremlin/csp/jobScreening_cvpr17/train/faces2 240
+
