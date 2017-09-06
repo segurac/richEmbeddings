@@ -30,7 +30,7 @@ def match_score(alpha, beta):
 def finalize(align1, align2):
     align1 = align1[::-1]    #reverse sequence 1
     align2 = align2[::-1]    #reverse sequence 2
-    print(align2)
+    #print(align2)
 
     i,j = 0,0
     
@@ -59,11 +59,14 @@ def finalize(align1, align2):
     
     identity = float(identity) / len(align1) * 100
     
-    print('Identity =', "%3.3f" % identity, 'percent')
-    print('Score =', score)
-    print(align1)
-    print(symbol)
-    print(align2)
+    #print('Identity =', "%3.3f" % identity, 'percent')
+    #print('Score =', score)
+    
+    #print(align1)
+    #print(symbol)
+    #print(align2)
+
+    return (align1, align2)
 
 
 def needle(seq1, seq2):
@@ -117,7 +120,7 @@ def needle(seq1, seq2):
         align2 += [seq2[j-1]]
         j -= 1
 
-    finalize(align1, align2)
+    return finalize(align1, align2)
 
 def water(seq1, seq2):
     m, n = len(seq1), len(seq2)  # length of two sequences
