@@ -9,6 +9,6 @@ with open(transcriptions_path, 'rb') as stream:
   transcriptions = pickle.load(stream)#, encoding='latin1')
     
 for video in transcriptions.keys():
-  with open('transcripts/' + video, 'w') as stream:
+  with open('transcripts/' + video + '.txt', 'w') as stream:
     stream.write(transcriptions[video].strip())
     

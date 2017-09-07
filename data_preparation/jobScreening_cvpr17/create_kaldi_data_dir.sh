@@ -32,9 +32,10 @@ for fichero_id in $(ls ../videos)
       segment2_float=$(soxi -D $INPUT_AUDIO_DIR/${fichero_id}.wav)
       segment2=$(python -c "print '%07d' % (($segment2_float)*100,)")
 #       texto=$(echo $linea | cut -d' ' -f6- | grep -v -e "^o.:\ " -e "^o:\ " -e "%" | sed -e 's@^.:\ *@@g' -e 's@^..:\ *@@g' -e 's@:@@g' -e 's@^x.\ @@g' -e 's@^x\ @@g' -e 's@\ \+@\ @g')
-      texto=$(cat $INPUT_TRS_DIR/${fichero_id}.txt)
-      texto=$(echo $texto | python3 -c 'import sys; print( sys.stdin.read().lower() )' | sed 's@-@\ @g' | sed 's@–@\ @g')
-      texto=$(echo $texto | sed -e 's@\.\.\.@@g' -e 's@\[[a-z]* ..:..:..]@[vocalized-noise] [vocalized-noise] [vocalized-noise]@g' -e 's@\[[a-z0-9]* [a-z0-9]* ..:..:..]@[vocalized-noise] [vocalized-noise] [vocalized-noise]@g' -e 's@\.\.@.@g' -e 's@ \. @. @g' -e 's@\.@\ @g')
+#       texto=$(cat $INPUT_TRS_DIR/${fichero_id}.txt)
+#       texto=$(echo $texto | python3 -c 'import sys; print( sys.stdin.read().lower() )' | sed 's@-@\ @g' | sed 's@–@\ @g')
+#       texto=$(echo $texto | sed -e 's@\.\.\.@@g' -e 's@\[[a-z]* ..:..:..]@[vocalized-noise] [vocalized-noise] [vocalized-noise]@g' -e 's@\[[a-z0-9]* [a-z0-9]* ..:..:..]@[vocalized-noise] [vocalized-noise] [vocalized-noise]@g' -e 's@\.\.@.@g' -e 's@ \. @. @g' -e 's@\.@\ @g')
+      texto=$(cat $INPUT_TRS_DIR/${fichero_id}.txt.clean | sed 's@\[vocalized-noise\]@[vocalized-noise] [vocalized-noise] [vocalized-noise]@g')
       segment_total=${fichero_id}_${segment1}_${segment2}
       
       if [[ ! -z "${texto// }" ]]
@@ -55,10 +56,10 @@ cat files_unsorted.txt | sort -u | while read nombre
 done
 
 # sed -i 's@\[...\]@<garbage>@g' text
-sed -i -e 's@\[hes]@<garbage>@g' -e 's@\[spk]@<garbage>@g' -e 's@\[noi]@<noise>@g' text
+# sed -i -e 's@\[hes]@<garbage>@g' -e 's@\[spk]@<garbage>@g' -e 's@\[noi]@<noise>@g' text
 
-sed -e 's@_ @\ @g' -e 's@_$@@g' -i text
-sed -i 's@[0-9]\(\ x\ *$\)@\ <sil>@g' text
-sed -i -e 's@[,!\"?]@\ @g'  -e 's@\ \ @\ @g' text
+# sed -e 's@_ @\ @g' -e 's@_$@@g' -i text
+# sed -i 's@[0-9]\(\ x\ *$\)@\ <sil>@g' text
+# sed -i -e 's@[,!\"?]@\ @g'  -e 's@\ \ @\ @g' text
 
 
