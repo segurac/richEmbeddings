@@ -1,0 +1,20 @@
+14047  mkdir -p /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc/
+14048  cp /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/* /mnt/3T-NAS/csp/jobScreening_cvpr1
+7/train/kaldi_data_dir/mfcc
+14049  utils/fix_data_dir.sh /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc
+14050  --compress true --nj $nj --cmd "$train_cmd" --mfcc-config ${config} --pitch_config $pitch_config
+14051  steps/make_mfcc.sh --compress true --nj 16 --cmd "$train_cmd" --mfcc-config /home/jls/work/speec
+h/speech-asr/speech-asr/egs/english/s5b/bin/conf/mfcc.conf --pitch_config /home/jls/work/speech/speech-
+asr/speech-asr/egs/english/s5b/bin/conf/pitch.conf  /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc/log /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc/data
+14052  grep pitch steps/make_mfcc.sh 
+14053  grep config steps/make_mfcc.sh 
+14054  less run.sh 
+14055  grep make_ run.sh
+14056  grep config steps/make_mfcc_pitch.sh 
+14057  steps/make_mfcc_pitch.sh --compress true --nj 16 --cmd "$train_cmd" --mfcc-config /home/jls/work/speech/speech-asr/speech-asr/egs/english/s5b/bin/conf/mfcc.conf --pitch_config /home/jls/work/speech/speech-asr/speech-asr/egs/english/s5b/bin/conf/pitch.conf  /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc/log /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc/data
+14058  utils/fix_data_dir.sh /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc
+14059  steps/compute_cmvn_stats.sh /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc/log/ /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc/data/
+
+steps/align_fmllr.sh --nj 32 --cmd "$train_cmd" /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc/ /home/jls/work/speech/speech-asr/speech-asr/egs/english/s5b/bin/data/lang/ /home/jls/work/speech/speech-asr/speech-asr/egs/english/s5b/bin/exp/tri4a/ /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/tri4a_align
+
+steps/get_train_ctm.sh /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc /home/jls/work/speech/speech-asr/speech-asr/egs/english/s5b/bin/data/lang/ /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/tri4a_align/
