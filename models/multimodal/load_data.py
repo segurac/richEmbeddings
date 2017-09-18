@@ -38,9 +38,14 @@ class MultimodalReader(data.Dataset):
         self.padding = self.getWordId('PADDING_TOKEN')
         self.unknownToken = self.getWordId('UNKNOWN_TOKEN')
         
+        print("Reading transcriptions")
         self.read_all_ctms(transcriptions_path)
+        print("Scanning faces")
         self.build_faces_dir_tree(faces_path)
-        self.read_video_metadata(annotations_path)
+        print("Reading video metada")
+        self.read_video_metadata(transcriptions_path + '/../../')
+        print("Segmenting audio and video according to ctms")
+        self.assing_frames_to_words(faces_path, fbank_path)
         
        
        
@@ -135,6 +140,7 @@ class MultimodalReader(data.Dataset):
         self.audio_frames = {}
         for video_id in self.videos:
             all_word_faces = []
+            all_word_audio_frames = []
             #get the set of frames from the list of images
             frame_set = set( self.video_sequences[video_id] )
             for i in range( len( self.transcriptions_id[video_id] )):
@@ -143,12 +149,13 @@ class MultimodalReader(data.Dataset):
                 end_ts   = self.transcriptions_ts[video_id][i]['end_ts']
                 real_fps = self.video_fps[video_id]
                 
-                video_frame_start = floor( start_ts * desired_video_frame_rate)
-                video_frame_end = ceil (end_ts * desired_video_frame_rate) + 1
-                for video_frame in range(video_frame_start, video_frame_end):
-                    resampled_video_frame = round(video_frame * real_fps / desired_video_frame_rate)
+                video_frame_start = np.floor( start_ts * desired_video_frame_rate)
+                video_frame_end = np.ceil (end_ts * desired_video_frame_rate) + 1
+                for video_frame in range(int(video_frame_start), int(video_frame_end)):
+                    resampled_video_frame = int(round(video_frame * real_fps / desired_video_frame_rate))
                     #generar el path completo al frame
-                    frame_path = os.path.join(faces_path, 'I_' + str(1000 + resampled_video_frame) + '.jpg')
+                    frame_path = os.path.join(faces_path, video_id, 'I_' + str(1000 + resampled_video_frame) + '.jpg')
+                    #print(frame_path)
                     #mirar si el path está en la sequencia de frames y ponerlo en la lista
                     if frame_path in frame_set:
                         word_faces.append(frame_path)
@@ -156,7 +163,19 @@ class MultimodalReader(data.Dataset):
                     else:
                         word_faces.append('')
                 all_word_faces.append(word_faces)
+                
+                audio_frame_start = int(np.floor( start_ts * audio_frame_step))
+                audio_frame_end = int(np.ceil (end_ts * audio_frame_step))
+                timestamps = {}
+                timestamps['start_frame'] = audio_frame_start
+                timestamps['end_frame'] = audio_frame_end
+                all_word_audio_frames.append(timestamps)
+                
+                
             self.video_frames[video_id] = all_word_faces
+            self.audio_frames[video_id] = all_word_audio_frames
+            
+            
                     
         
     
