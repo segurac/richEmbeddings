@@ -26,7 +26,7 @@ class MultimodalReader(data.Dataset):
         with open(annotations_path, 'rb') as stream:
             self.annotations = pickle.load(stream, encoding='latin1')
 
-        self.videos = list(annotations['openness'].keys())
+        self.videos = list(self.annotations['openness'].keys())
         self.traits = ["openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism", "interview"] #self.annotations.keys()
         
         self.word2id = {}
@@ -39,15 +39,16 @@ class MultimodalReader(data.Dataset):
         self.unknownToken = self.getWordId('UNKNOWN_TOKEN')
         
         self.read_all_ctms(transcriptions_path)
-
+        self.build_faces_dir_tree(faces_path)
+        self.read_video_metadata(annotations_path)
         
        
        
-    def build_video_dir_tree(self, videos_path):
+    def build_faces_dir_tree(self, faces_path):
         self.video_sequences ={}
         for video_id in self.videos:
             images = []
-            video_path = os.path.join(videos_path, video_id)
+            video_path = os.path.join(faces_path, video_id)
             for root, _, fnames in sorted(os.walk(video_path)):
               for fname in sorted(fnames):
                   if is_image_file(fname):
@@ -57,15 +58,25 @@ class MultimodalReader(data.Dataset):
         
     def load_ctm(self, ctm_path):
         data = []
-        with open(filename, 'r') as stream:
-            for line in stream:
-                spk_id, nothing, start_ts, end_ts, word = line.strip().split()
-                new_data = {}
-                new_data['start_ts'] = float(start_ts)
-                new_data['end_ts'] = float(end_ts) + float(start_ts) 
-                new_data['word'] = str(word)
-                data.append(new_data)
-                
+        try:
+            with open(ctm_path, 'r') as stream:
+                for line in stream:
+                    spk_id, nothing, start_ts, end_ts, word = line.strip().split()
+                    new_data = {}
+                    new_data['start_ts'] = float(start_ts)
+                    new_data['end_ts'] = float(end_ts) + float(start_ts)
+                    if word == "<unk>":
+                        word = "UNKNOWN_TOKEN"
+                    new_data['word'] = str(word)
+                    data.append(new_data)
+        except:
+            print("CTM file not found", ctm_path)
+            print("Creating one single <unk> spanning the first 10 seconds")
+            new_data = {}
+            new_data['start_ts'] = float(0.0)
+            new_data['end_ts'] = float(10.0) + float(0.0) 
+            new_data['word'] = "UNKNOWN_TOKEN"
+            data.append(new_data)
         return data
         
         
@@ -76,7 +87,7 @@ class MultimodalReader(data.Dataset):
         for video_id in self.videos:
             word_ids = []
             word_ts = []
-            ctm_data = load_ctm( transcriptions_path + '/' + video_id + '.ctm.clean')
+            ctm_data = self.load_ctm( transcriptions_path + '/' + video_id + '.ctm.clean')
             for word in ctm_data:
                 word_id = self.getWordId(word['word'])
                 word_ids.append(word_id)
@@ -119,11 +130,15 @@ class MultimodalReader(data.Dataset):
         
         return wordId
     
-    def assing_frames_to_words(self, audio_frame_step=100.0, desired_video_frame_rate = 25.0)
+    def assing_frames_to_words(self, faces_path, audio_path,  audio_frame_step=100.0, desired_video_frame_rate = 25.0):
         self.video_frames = {}
         self.audio_frames = {}
         for video_id in self.videos:
+            all_word_faces = []
+            #get the set of frames from the list of images
+            frame_set = set( self.video_sequences[video_id] )
             for i in range( len( self.transcriptions_id[video_id] )):
+                word_faces = []
                 start_ts = self.transcriptions_ts[video_id][i]['start_ts']
                 end_ts   = self.transcriptions_ts[video_id][i]['end_ts']
                 real_fps = self.video_fps[video_id]
@@ -133,9 +148,33 @@ class MultimodalReader(data.Dataset):
                 for video_frame in range(video_frame_start, video_frame_end):
                     resampled_video_frame = round(video_frame * real_fps / desired_video_frame_rate)
                     #generar el path completo al frame
+                    frame_path = os.path.join(faces_path, 'I_' + str(1000 + resampled_video_frame) + '.jpg')
                     #mirar si el path está en la sequencia de frames y ponerlo en la lista
+                    if frame_path in frame_set:
+                        word_faces.append(frame_path)
                     #si no está poner un string vacío
+                    else:
+                        word_faces.append('')
+                all_word_faces.append(word_faces)
+            self.video_frames[video_id] = all_word_faces
                     
+        
+    
+    def read_video_metadata(self, metadata_path):
+        self.video_duration ={}
+        self.video_fps = {}
+        
+        with open(metadata_path + '/video_duration.txt','r') as stream:
+            for line in stream:
+                video_id, duration = line.strip().split()
+                duration = float(duration)
+                self.video_duration[video_id] = duration
+                
+        with open(metadata_path + '/video_fps.txt','r') as stream:
+            for line in stream:
+                video_id, fps = line.strip().split()
+                fps = float(fps)
+                self.video_fps[video_id] = fps
         
     
 

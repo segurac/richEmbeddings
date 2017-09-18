@@ -1,0 +1,10 @@
+
+
+for video in $(ls ./); do echo $video; ffprobe ./$video 2>&1 | sed 's@,@\n@g' | grep fps; done  > /tmp/durations.txt
+
+cat /tmp/durations.txt | tr '\n' ' ' | sed 's@fps@fps\n@g' | awk '{print $1" "$2}' > ../video_fps.txt
+
+for audio in $(ls); do echo $audio; soxi -D ./$audio; done > /tmp/durations.txt
+cat /tmp/durations.txt | sed 's@$@\ line@g' | tr '\n' ' ' | sed -e 's@.wav\ line@.wav@g' -e 's@\ line@\n@g' | awk '{print $1" "$2}' > ../video_duration.txt
+
+
