@@ -23,6 +23,10 @@ class MultimodalReader(data.Dataset):
   
     def __init__(self, annotations_path, transcriptions_path, fbank_path, faces_path):
         
+        
+        self.fbank_path = fbank_path
+        self.faces_path = faces_path
+        
         with open(annotations_path, 'rb') as stream:
             self.annotations = pickle.load(stream, encoding='latin1')
 
@@ -210,11 +214,64 @@ class MultimodalReader(data.Dataset):
             tuple: ([word_ids], [target]) where target is the list of scores of each of the personality traits.
         """
 
-        video = self.videos[index]
-        transcript = self.transcriptions_id[video]
+        video_id = self.videos[index]
+        transcript = self.transcriptions_id[video_id]
+        
+        
         labels = []
         for trait in self.traits:
-            score = self.annotations[trait][video]
+            score = self.annotations[trait][video_id]
             labels.append(score)
+            
+            
+        #load audio, un numpy array de dimensión variable para cada palabra dependiendo de los frames de comienzo y final
+        audio_filterbank_file = self.fbank_path + "/" + video_id + ".wav.fbank.pickle"
+        with open(audio_filterbank_file, rb) as stream:
+            all_fb_data = pickle.load(stream)
         
-        return(transcript, labels)
+        audio_data = []
+        for i, timestamps in enumerate(self.audio_frames[video_id]):
+            start_frame = timestamps['start_frame']
+            end_frame = timestamps['end_frame']
+            audio_data.append(all_fb_data[start_frame:end_frame])
+            
+        #load video, una lista de imágenes para cada palabra
+        video_data = []
+        for sequence in self.video_frames[video_id]:
+            sequence_data = []
+            for img_path in sequence:
+                img = defalt_loader(img_path)
+                if self.transform is not None:
+                    img = self.transform(img)
+                sequence_data.append(img)
+            video_data.append(sequence_data)
+        
+        return([transcript, audio_data, video_data], labels)
+
+
+def pil_loader(path):
+    # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
+    with open(path, 'rb') as f:
+        with Image.open(f) as img:
+            return img.convert('RGB')
+
+
+def accimage_loader(path):
+    import accimage
+    try:
+        return accimage.Image(path)
+    except IOError:
+        # Potentially a decoding problem, fall back to PIL.Image
+        return pil_loader(path)
+
+
+def default_loader2(path):
+    from torchvision import get_image_backend
+    if get_image_backend() == 'accimage':
+        return accimage_loader(path)
+    else:
+        return pil_loader(path)
+
+    
+def default_loader(path):
+    return Image.open(path).convert('RGB')
