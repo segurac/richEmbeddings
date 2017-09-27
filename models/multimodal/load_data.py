@@ -7,7 +7,7 @@ import numpy as np
 import os
 import os.path
 import pickle
-
+from PIL import Image
 
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
@@ -21,11 +21,13 @@ def is_image_file(filename):
 
 class MultimodalReader(data.Dataset):
   
-    def __init__(self, annotations_path, transcriptions_path, fbank_path, faces_path):
+    def __init__(self, annotations_path, transcriptions_path, fbank_path, faces_path, transform=None, target_transform=None):
         
         
         self.fbank_path = fbank_path
         self.faces_path = faces_path
+        self.transform = transform
+        self.target_transform = target_transform
         
         with open(annotations_path, 'rb') as stream:
             self.annotations = pickle.load(stream, encoding='latin1')
@@ -226,7 +228,7 @@ class MultimodalReader(data.Dataset):
             
         #load audio, un numpy array de dimensión variable para cada palabra dependiendo de los frames de comienzo y final
         audio_filterbank_file = self.fbank_path + "/" + video_id + ".wav.fbank.pickle"
-        with open(audio_filterbank_file, rb) as stream:
+        with open(audio_filterbank_file, 'rb') as stream:
             all_fb_data = pickle.load(stream)
         
         audio_data = []
@@ -240,7 +242,7 @@ class MultimodalReader(data.Dataset):
         for sequence in self.video_frames[video_id]:
             sequence_data = []
             for img_path in sequence:
-                img = defalt_loader(img_path)
+                img = default_loader(img_path)
                 if self.transform is not None:
                     img = self.transform(img)
                 sequence_data.append(img)
