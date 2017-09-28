@@ -340,13 +340,13 @@ def my_collate(batch):
     for n in range(len(batch)):
         video = batch[n][0][2]
         nwords = len(video)
-        nchannels = video[0].size()[1]  #[1,channels, width?, height?]
+        nchannels = video[0][0].size()[0]  #[channels, width?, height?]
         
-        video_data_tensor = torch.FloatTensor(nwords, max_lengths_video[n], nchannels, video[0].size()[2], video[0].size()[3] ).zero_()
+        video_data_tensor = torch.FloatTensor(nwords, int(max_lengths_video[n]), nchannels, video[0][0].size()[1], video[0][0].size()[2] ).zero_()
         ### fill in data
         for word in range(nwords):
-            
-        
+            for i, img in enumerate(video[word]):
+                video_data_tensor[word,i] = img
         total_video_data.append(video_data_tensor)
     
-    return ((transcripts_data_tensor, target))
+    return ((transcripts_data_tensor, total_video_data, target))
