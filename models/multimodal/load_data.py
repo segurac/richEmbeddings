@@ -348,5 +348,19 @@ def my_collate(batch):
             for i, img in enumerate(video[word]):
                 video_data_tensor[word,i] = img
         total_video_data.append(video_data_tensor)
+        
+        
+    ### Prepare audio data tensor, array of tensors, (nwords, sample_max_seq_length, n_filterbanks)
+    total_audio_data = []
+    for n in range(len(batch)):
+        audio = batch[n][0][1]
+        nwords = len(audio)
+        n_filterbanks = audio[0].shape[1]
+        print(n_filterbanks)
+        audio_data_tensor = torch.FloatTensor(nwords, int(max_lengths_audio[n]), n_filterbanks)
+        for word in range(nwords):
+            for i, frame in enumerate(audio[word]):
+                audio_data_tensor[word,i] = torch.from_numpy(frame)
+        total_audio_data.append(audio_data_tensor)
     
-    return ((transcripts_data_tensor, total_video_data, target))
+    return ((transcripts_data_tensor, total_video_data, total_audio_data, target))
