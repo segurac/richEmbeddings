@@ -277,3 +277,76 @@ def default_loader2(path):
     
 def default_loader(path):
     return Image.open(path).convert('RGB')
+
+
+
+def my_collate(batch):
+    
+    
+    max_lengths_video = []
+    max_lengths_audio = []
+    for n in range(len(batch)):
+        transcripts = batch[n][0][0]
+        audio       = batch[n][0][1]
+        video       = batch[n][0][2]
+        target      = batch[n][1] 
+    
+        max_length=0
+        for i in range(len(video)):
+            nphotos = len(video[i])
+            if nphotos > max_length:
+                max_length = nphotos
+        max_lengths_video.append(max_length)
+        
+        max_length = 0
+        for i in range(len(audio)):
+            nframes = audio[i].shape[0]
+            if nframes > max_length:
+                max_length = nframes
+        max_lengths_audio.append(max_length)
+            
+    max_lengths_audio = np.array(max_lengths_audio)
+    max_lengths_video = np.array(max_lengths_video)
+    max_length_audio = np.max(max_lengths_audio)
+    max_length_video = np.max(max_lengths_video)
+    
+    max_length_transcripts=0
+    for n in range(len(batch)):
+        nwords = len(batch[n][0][0])
+        if nwords > max_length_transcripts:
+            max_length_transcripts = nwords
+    
+
+    ### Prepare transcripts data tensor, one big matrix (batch_size, max_length_transcripts)
+    transcripts_data_tensor = torch.LongTensor(
+            len(batch), 
+            max_length_transcripts
+            ).zero_()
+    print(transcripts_data_tensor.size())
+
+    for n in range(len(batch)):
+        nwords = len(batch[n][0][0])
+        for word_idx in range(nwords):
+            transcripts_data_tensor[n][word_idx] = batch[n][0][0][word_idx]
+
+    ### Prepare target variables, one big matrix, (batch_size, 5 traits + 1 interview)
+    target = torch.FloatTensor( len(batch), 6).zero_()
+    for n in range(len(batch)):
+        for trait in range(len(batch[n][1])):
+            target[n][trait] = batch[n][1][trait]
+
+    ### Prepare video data tensor, array of tensors, (nwords, sample_max_seq_length, channels, width?, heigth?)
+    total_video_data = []
+    for n in range(len(batch)):
+        video = batch[n][0][2]
+        nwords = len(video)
+        nchannels = video[0].size()[1]  #[1,channels, width?, height?]
+        
+        video_data_tensor = torch.FloatTensor(nwords, max_lengths_video[n], nchannels, video[0].size()[2], video[0].size()[3] ).zero_()
+        ### fill in data
+        for word in range(nwords):
+            
+        
+        total_video_data.append(video_data_tensor)
+    
+    return ((transcripts_data_tensor, target))
