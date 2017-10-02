@@ -8,6 +8,7 @@ import os
 import os.path
 import pickle
 from PIL import Image
+import hashlib
 
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
@@ -72,7 +73,16 @@ class MultimodalReader(data.Dataset):
         try:
             with open(ctm_path, 'r') as stream:
                 for line in stream:
-                    spk_id, nothing, start_ts, end_ts, word = line.strip().split()
+                    ctm_line = line.strip().split()
+                    spk_id = ctm_line[0]
+                    nothing = ctm_line[1]
+                    start_ts = ctm_line[2]
+                    end_ts = ctm_line[3]
+                    word = ctm_line[4]
+                    if len(ctm_line) == 6:
+                        confidence = ctm_line[5]
+                    else:
+                        confidence = 1.0
                     new_data = {}
                     new_data['start_ts'] = float(start_ts)
                     new_data['end_ts'] = float(end_ts) + float(start_ts)
@@ -81,13 +91,43 @@ class MultimodalReader(data.Dataset):
                     new_data['word'] = str(word)
                     data.append(new_data)
         except:
-            print("CTM file not found", ctm_path)
-            print("Creating one single <unk> spanning the first 10 seconds")
-            new_data = {}
-            new_data['start_ts'] = float(0.0)
-            new_data['end_ts'] = float(10.0) + float(0.0) 
-            new_data['word'] = "UNKNOWN_TOKEN"
-            data.append(new_data)
+            ## test reading the ASR transciption
+            try:
+                dir_path =  os.path.dirname(ctm_path)
+                ctm_name = os.path.basename(ctm_path)
+                md5sum = ("../" + ctm_name.replace(".ctm.clean","") + ".wav\n")
+                #print(md5sum)
+                md5sum = hashlib.md5(md5sum.encode()).hexdigest()
+                new_ctm_path = dir_path + "/../ctm_asr/" + md5sum + ".ctm"
+                print("CTM file not found", ctm_path)
+                print("Trying with", new_ctm_path)
+                
+                with open(new_ctm_path, 'r') as stream:
+                    for line in stream:
+                        #print(line)
+                        ctm_line = line.strip().split()
+                        spk_id = ctm_line[0]
+                        start_ts = ctm_line[1]
+                        end_ts = ctm_line[2]
+                        word = ctm_line[3]
+                        confidence = ctm_line[4]
+
+                        new_data = {}
+                        new_data['start_ts'] = float(start_ts)
+                        new_data['end_ts'] = float(end_ts) + float(start_ts)
+                        if word == "<unk>":
+                            word = "UNKNOWN_TOKEN"
+                        new_data['word'] = str(word)
+                        data.append(new_data)
+            except:
+                #print("CTM file not found", ctm_path)
+                #print("CTM file from ASR not found", new_ctm_path)
+                print("Creating one single <unk> spanning the first 10 seconds")
+                new_data = {}
+                new_data['start_ts'] = float(0.0)
+                new_data['end_ts'] = float(10.0) + float(0.0) 
+                new_data['word'] = "UNKNOWN_TOKEN"
+                data.append(new_data)
         return data
         
         
