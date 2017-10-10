@@ -278,13 +278,22 @@ class MultimodalReader(data.Dataset):
             audio_data.append(all_fb_data[start_frame:end_frame])
             
         #load video, una lista de imágenes para cada palabra
+        #video_data = []
+        #for sequence in self.video_frames[video_id]:
+            #sequence_data = []
+            #for img_path in sequence:
+                #img = default_loader(img_path)
+                #if self.transform is not None:
+                    #img = self.transform(img)
+                #sequence_data.append(img)
+            #video_data.append(sequence_data)
+
         video_data = []
         for sequence in self.video_frames[video_id]:
             sequence_data = []
             for img_path in sequence:
-                img = default_loader(img_path)
-                if self.transform is not None:
-                    img = self.transform(img)
+                with open(img_path, 'rb') as stream:
+                    img = pickle.load(stream)                
                 sequence_data.append(img)
             video_data.append(sequence_data)
         
@@ -375,18 +384,19 @@ def my_collate(batch):
         for trait in range(len(batch[n][1])):
             target[n][trait] = batch[n][1][trait]
 
-    ### Prepare video data tensor, array of tensors, (nwords, sample_max_seq_length, channels, width?, heigth?)
+    ### Prepare video data tensor, array of tensors, (nwords, sample_max_seq_length, f)
     total_video_data = []
     for n in range(len(batch)):
         video = batch[n][0][2]
         nwords = len(video)
-        nchannels = video[0][0].size()[0]  #[channels, width?, height?]
+        #nchannels = video[0][0].size()[0]  #[channels, width?, height?]
+        feat_size = video[0][0].shape[0]
         
-        video_data_tensor = torch.FloatTensor(nwords, int(max_lengths_video[n]), nchannels, video[0][0].size()[1], video[0][0].size()[2] ).zero_()
+        video_data_tensor = torch.FloatTensor(nwords, int(max_lengths_video[n]), feat_size ).zero_()
         ### fill in data
         for word in range(nwords):
             for i, img in enumerate(video[word]):
-                video_data_tensor[word,i] = img
+                video_data_tensor[word,i] = torch.from_numpy(img)
         total_video_data.append(video_data_tensor)
         
         
