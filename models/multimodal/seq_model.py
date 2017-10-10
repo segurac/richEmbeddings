@@ -89,6 +89,7 @@ class Word_Embeddings_sequence_model(nn.Module):
         embeddings = self.embedding(cropped_input)
         print("embeddings size", embeddings.size())
         embeddings = torch.cat([embeddings, face_embeddings], dim=2) 
+        print("Extended embeddings size", embeddings.size())
 
         ## feed to the RNN
         output, hidden = self.rnn(embeddings, hidden)

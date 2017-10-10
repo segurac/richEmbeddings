@@ -22,11 +22,12 @@ def is_image_file(filename):
 
 class MultimodalReader(data.Dataset):
   
-    def __init__(self, annotations_path, transcriptions_path, fbank_path, faces_path, transform=None, target_transform=None):
+    def __init__(self, annotations_path, transcriptions_path, fbank_path, faces_path, transform=None, target_transform=None,  preload_path=None):
         
         
         self.fbank_path = fbank_path
         self.faces_path = faces_path
+        self.preload_path = preload_path
         self.transform = transform
         self.target_transform = target_transform
         
@@ -257,6 +258,13 @@ class MultimodalReader(data.Dataset):
         """
 
         video_id = self.videos[index]
+        if self.preload_path is not None:
+            save_path = self.preload_path + '/' + video_id + '.preload'
+            if os.path.exists(save_path):
+                with open(save_path, 'rb') as stream:
+                    user_data = pickle.load(stream)
+                return user_data
+            
         transcript = self.transcriptions_id[video_id]
         
         
@@ -292,12 +300,22 @@ class MultimodalReader(data.Dataset):
         for sequence in self.video_frames[video_id]:
             sequence_data = []
             for img_path in sequence:
-                with open(img_path, 'rb') as stream:
-                    img = pickle.load(stream)                
-                sequence_data.append(img)
+                if img_path != '':
+                    with open(img_path, 'rb') as stream:
+                        img = pickle.load(stream)                
+                    sequence_data.append(img)
+                else:
+                    sequence_data.append(np.zeros(4096,))
             video_data.append(sequence_data)
         
-        return([transcript, audio_data, video_data], labels)
+        user_data = ([transcript, audio_data, video_data], labels)
+        if self.preload_path is not None:
+            save_path = self.preload_path + '/' + video_id + '.preload'
+            if not os.path.exists(save_path):
+                with open(save_path,'wb') as stream:
+                    pickle.dump(user_data, stream)
+        
+        return user_data
 
 
 def pil_loader(path):
@@ -331,7 +349,7 @@ def default_loader(path):
 
 def my_collate(batch):
     
-    
+    forced_min_video_seq = 2
     max_lengths_video = []
     max_lengths_audio = []
     for n in range(len(batch)):
@@ -345,7 +363,7 @@ def my_collate(batch):
             nphotos = len(video[i])
             if nphotos > max_length:
                 max_length = nphotos
-        max_lengths_video.append(max_length)
+        max_lengths_video.append( np.max([max_length, forced_min_video_seq]))
         
         max_length = 0
         for i in range(len(audio)):
@@ -390,7 +408,7 @@ def my_collate(batch):
         video = batch[n][0][2]
         nwords = len(video)
         #nchannels = video[0][0].size()[0]  #[channels, width?, height?]
-        feat_size = video[0][0].shape[0]
+        feat_size = 4096#video[0][0].shape[0]
         
         video_data_tensor = torch.FloatTensor(nwords, int(max_lengths_video[n]), feat_size ).zero_()
         ### fill in data
