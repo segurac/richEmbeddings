@@ -129,6 +129,16 @@ class MultimodalReader(data.Dataset):
                 new_data['end_ts'] = float(10.0) + float(0.0) 
                 new_data['word'] = "UNKNOWN_TOKEN"
                 data.append(new_data)
+        if len(data) == 0:
+            print("Error no transcription", ctm_path)
+            #import sys
+            #sys.exit()
+            print("Creating one single <unk> spanning the first 5 seconds")
+            new_data = {}
+            new_data['start_ts'] = float(0.0)
+            new_data['end_ts'] = float(5.0) + float(0.0) 
+            new_data['word'] = "UNKNOWN_TOKEN"
+            data.append(new_data)
         return data
         
         
@@ -389,7 +399,7 @@ def my_collate(batch):
             len(batch), 
             max_length_transcripts
             ).zero_()
-    print(transcripts_data_tensor.size())
+    #print(transcripts_data_tensor.size())
 
     for n in range(len(batch)):
         nwords = len(batch[n][0][0])
@@ -423,8 +433,16 @@ def my_collate(batch):
     for n in range(len(batch)):
         audio = batch[n][0][1]
         nwords = len(audio)
-        n_filterbanks = audio[0].shape[1]
-        print(n_filterbanks)
+        if nwords == 0:
+            print("Warning, no words")
+            print("len(audio)", len(audio))
+            print("len(video)", len(batch[n][0][2]))
+            print("len transcript", len(batch[n][0][0]))
+            
+            n_filterbanks = 26
+        else:
+            n_filterbanks = audio[0].shape[1]
+        #print(n_filterbanks)
         audio_data_tensor = torch.FloatTensor(nwords, int(max_lengths_audio[n]), n_filterbanks)
         for word in range(nwords):
             for i, frame in enumerate(audio[word]):

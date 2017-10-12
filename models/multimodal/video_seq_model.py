@@ -71,7 +71,7 @@ class Vgg_face_sequence_model(nn.Module):
         
         #first get a slice for earch sequence element, get features from convolutional and store output in another sequence to feed the RNN
         
-        print(inputs.size())
+        #print(inputs.size())
         input_sizes = inputs.size() 
         seq_length = input_sizes[1]
         seq_window = 30
@@ -113,7 +113,7 @@ class Vgg_face_sequence_model(nn.Module):
         
         ## concatenate in (batch (words), sequence, features)
         features = torch.stack(features, dim=1)
-        print(features.size())
+        #print(features.size())
 
         ## feed to the RNN
         output, hidden = self.rnn(features, hidden)
@@ -137,7 +137,7 @@ class Vgg_face_sequence_model(nn.Module):
         
         
         
-        print("output", output.size())
+        #print("output", output.size())
         #gc.collect()
         return output
       

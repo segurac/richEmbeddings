@@ -44,23 +44,28 @@ class Word_Embeddings_sequence_model(nn.Module):
             #images=images[0:4,:,:,:,:]
             image_var = images
             #print(images.size()[0])
-            face_model_hidden = self.video_model.init_hidden(images.size()[0])
+            try:
+                face_model_hidden = self.video_model.init_hidden(images.size()[0])
+            except:
+                print(images)
+                import sys
+                sys.exit()
             if True: #(USE_CUDA)
                 face_model_hidden = (face_model_hidden[0].cuda(), face_model_hidden[1].cuda())
             face_embedding = self.video_model(image_var, face_model_hidden)
             #(pad_l, pad_r, pad_t, pad_b )
-            print(face_embedding.size())
+            #print(face_embedding.size())
             padding_size = seq_length - face_embedding.size()[0]
             if padding_size > 0:
                 zeros = torch.FloatTensor(padding_size, face_embedding.size()[1] ).zero_()
                 zeros = torch.autograd.Variable(zeros).cuda() 
-                print("padding size", zeros.size())
+                #print("padding size", zeros.size())
                 face_embedding = torch.cat( [face_embedding, zeros], dim=0 )
-            print(face_embedding.size())
+            #print(face_embedding.size())
             face_embeddings.append(face_embedding)
         
         face_embeddings = torch.stack(face_embeddings, dim=0)
-        print(face_embeddings.size())
+        #print(face_embeddings.size())
         
         
         #first get a slice for earch sequence element, get features from convolutional and store output in another sequence to feed the RNN
@@ -87,9 +92,9 @@ class Word_Embeddings_sequence_model(nn.Module):
             cropped_input = torch.autograd.Variable(cropped_input, volatile=True).cuda()
 
         embeddings = self.embedding(cropped_input)
-        print("embeddings size", embeddings.size())
+        #print("embeddings size", embeddings.size())
         embeddings = torch.cat([embeddings, face_embeddings], dim=2) 
-        print("Extended embeddings size", embeddings.size())
+        #print("Extended embeddings size", embeddings.size())
 
         ## feed to the RNN
         output, hidden = self.rnn(embeddings, hidden)
