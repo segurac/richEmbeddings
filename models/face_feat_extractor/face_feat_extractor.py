@@ -1,5 +1,10 @@
 from __future__ import print_function
 
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
+
+
 import csv
 import os
 import os.path
@@ -73,11 +78,13 @@ class ThreadingExample(object):
 
 def main():
 
-
+    print("Loading model...")
     list_of_images = sys.argv[1]
     output_path = sys.argv[2]
     model = VGG_FACE.VGG_FACE
+    print("...")
     model.load_state_dict(torch.load('VGG_FACE.pth'))
+    print("...")
     for param in model.parameters():
         param.requires_grad = False
     list_model = list(model.children())
@@ -87,10 +94,12 @@ def main():
     #list_model.append(  nn.ReLU() )
     #list_model.append(  nn.Dropout(0.5) )
     #list_model.append( torch.nn.Sequential(VGG_FACE.Lambda(lambda x: x.view(1,-1) if 1==len(x.size()) else x ),torch.nn.Linear(64,7)) )
+    print("...")
     model =  nn.Sequential(*list_model)
     model = torch.nn.DataParallel(model).cuda()
 
     model.eval()
+    print("Model Loaded.")
     
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     scale = transforms.Scale(224)

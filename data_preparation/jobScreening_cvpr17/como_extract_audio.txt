@@ -3,4 +3,4 @@
 
 mkdir audios
 cd audios/
-for fichero in $(ls ../videos); do ffmpeg -i ../videos/$fichero -acodec pcm_s16le -ac 1 -ar 8000  ${fichero%.mp4}.wav; done
+for fichero in $(ls ../videos); do ffmpeg -i ../videos/$fichero -acodec pcm_s16le -ac 1 -ar 8000  ./${fichero%.mp4}.wav; done

@@ -315,6 +315,7 @@ class MultimodalReader(data.Dataset):
                         img = pickle.load(stream)                
                     sequence_data.append(img)
                 else:
+                    print("image", img_path, " not found.")
                     sequence_data.append(np.zeros(4096,))
             video_data.append(sequence_data)
         

@@ -38,3 +38,18 @@ steps/align_fmllr.sh --nj 32 --cmd "$train_cmd" /mnt/3T-NAS/csp/jobScreening_cvp
 
 steps/get_train_ctm.sh /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/mfcc /home/jls/work/speech/speech-asr/speech-asr/egs/english/s5b/bin/data/lang/ /mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/tri4a_align/
 
+
+##OTRA VEZ PERO CON UN EXPORT
+export SOUCE_DATA_DIR="/mnt/3T-NAS/csp/jobScreening_cvpr17/train/kaldi_data_dir/"
+
+steps/make_mfcc_pitch.sh --compress true --nj 16 --cmd "$train_cmd" --mfcc-config /home/jls/work/speech/speech-asr/speech-asr/egs/english/s5b/bin/conf/mfcc.conf --pitch_config /home/jls/work/speech/speech-asr/speech-asr/egs/english/s5b/bin/conf/pitch.conf  ${SOUCE_DATA_DIR}/mfcc ${SOUCE_DATA_DIR}/mfcc/log ${SOUCE_DATA_DIR}/mfcc/data
+
+utils/fix_data_dir.sh ${SOUCE_DATA_DIR}/mfcc
+
+steps/compute_cmvn_stats.sh ${SOUCE_DATA_DIR}/mfcc ${SOUCE_DATA_DIR}/mfcc/log/ ${SOUCE_DATA_DIR}/mfcc/data/
+
+steps/align_fmllr.sh --nj 32 --cmd "$train_cmd" ${SOUCE_DATA_DIR}/mfcc/ /home/jls/work/speech/speech-asr/speech-asr/egs/english/s5b/bin/data/lang/ /home/jls/work/speech/speech-asr/speech-asr/egs/english/s5b/bin/exp/tri4a/ ${SOUCE_DATA_DIR}/tri4a_align
+
+steps/get_train_ctm.sh ${SOUCE_DATA_DIR}/mfcc /home/jls/work/speech/speech-asr/speech-asr/egs/english/s5b/bin/data/lang/ ${SOUCE_DATA_DIR}/tri4a_align/
+
+
