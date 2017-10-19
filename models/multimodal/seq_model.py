@@ -5,6 +5,8 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import numpy as np
 from models.multimodal import video_seq_model as v_seq_model
+from models.multimodal import audio_seq_model as a_seq_model
+
 
 
 
@@ -15,13 +17,14 @@ class Word_Embeddings_sequence_model(nn.Module):
 
         self.embedding = nn.Embedding(vocab_size, embedding_size)
         self.video_model = v_seq_model.Vgg_face_sequence_model(nhid=32, nlayers=2)
+        self.audio_model = a_seq_model.AudioFB_sequence_model(nhid=32, nlayers=2)
         
         self.rnn_nhid = nhid
         self.rnn_layers = nlayers
         self.bidirectional = False
         self.seq_window = 100
 
-        self.rnn = nn.LSTM(embedding_size+self.video_model.face_embedding_size, nhid, nlayers, dropout=dropout, batch_first = True, bidirectional = self.bidirectional)
+        self.rnn = nn.LSTM(embedding_size+self.video_model.face_embedding_size + self.audio_model.audio_embedding_size, nhid, nlayers, dropout=dropout, batch_first = True, bidirectional = self.bidirectional)
         #self.rnn = nn.RNN(64, nhid, nlayers, batch_first = True, bidirectional = False)
         #self.rnn = nn.LSTM(64, nhid, nlayers, batch_first = True, bidirectional = False)
 
@@ -35,9 +38,41 @@ class Word_Embeddings_sequence_model(nn.Module):
 
 
 
-    def forward(self, transcripts, faces, hidden, eval=False):
+    def forward(self, transcripts, faces, filterbanks, hidden, eval=False):
         
         seq_length = transcripts.size()[1]
+        
+        
+        
+        audio_embeddings = []
+        for person in filterbanks:
+            #person shape is nwords, framelength, 26 filters)
+            #images=images[0:4,:,:,:,:]
+            images = person.unsqueeze(1)
+            #print(images.size()[0])
+            try:
+                audio_model_hidden = self.audio_model.init_hidden(images.size()[0])
+            except:
+                print(images)
+                import sys
+                sys.exit()
+            if True: #(USE_CUDA)
+                audio_model_hidden = (audio_model_hidden[0].cuda(), audio_model_hidden[1].cuda())
+            audio_embedding = self.audio_model(images, audio_model_hidden)
+            #(pad_l, pad_r, pad_t, pad_b )
+            #print(audio_embedding.size(), "audio_embedding")
+            padding_size = seq_length - audio_embedding.size()[0]
+            if padding_size > 0:
+                zeros = torch.FloatTensor(padding_size, audio_embedding.size()[1] ).zero_()
+                zeros = torch.autograd.Variable(zeros).cuda() 
+                #print("padding size", zeros.size())
+                audio_embedding = torch.cat( [audio_embedding, zeros], dim=0 )
+            #print(audio_embedding.size())
+            audio_embeddings.append(audio_embedding)
+        
+        audio_embeddings = torch.stack(audio_embeddings, dim=0)
+        
+        
         
         face_embeddings = []
         for images in faces:
@@ -93,7 +128,7 @@ class Word_Embeddings_sequence_model(nn.Module):
 
         embeddings = self.embedding(cropped_input)
         #print("embeddings size", embeddings.size())
-        embeddings = torch.cat([embeddings, face_embeddings], dim=2) 
+        embeddings = torch.cat([embeddings, face_embeddings, audio_embeddings], dim=2) 
         #print("Extended embeddings size", embeddings.size())
 
         ## feed to the RNN

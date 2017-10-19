@@ -361,6 +361,7 @@ def default_loader(path):
 def my_collate(batch):
     
     forced_min_video_seq = 2
+    forced_min_audio_seq = 10
     max_lengths_video = []
     max_lengths_audio = []
     for n in range(len(batch)):
@@ -381,7 +382,7 @@ def my_collate(batch):
             nframes = audio[i].shape[0]
             if nframes > max_length:
                 max_length = nframes
-        max_lengths_audio.append(max_length)
+        max_lengths_audio.append( np.max([max_length, forced_min_audio_seq]))
             
     max_lengths_audio = np.array(max_lengths_audio)
     max_lengths_video = np.array(max_lengths_video)

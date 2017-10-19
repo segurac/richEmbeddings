@@ -300,7 +300,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         if USE_CUDA:
             hidden = (hidden[0].cuda(), hidden[1].cuda())
  
-        y_pred = model(transcripts, faces, hidden)
+        y_pred = model(transcripts, faces, filterbanks, hidden)
  
             
         ##print(images)
