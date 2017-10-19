@@ -128,7 +128,7 @@ class Word_Embeddings_sequence_model(nn.Module):
         #word dropout
         if self.training:
             unknownToken = 1
-            set_word_to_unknown = np.random.uniform(size=cropped_input.size()) > 0.9
+            set_word_to_unknown = np.random.uniform(size=cropped_input.size()) > 0.84
             for i in range(cropped_input.size()[0]):
                 for j in range(cropped_input.size()[1]):
                     if set_word_to_unknown[i][j]:
