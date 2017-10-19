@@ -16,8 +16,8 @@ class Word_Embeddings_sequence_model(nn.Module):
         super(Word_Embeddings_sequence_model, self).__init__()
 
         self.embedding = nn.Embedding(vocab_size, embedding_size)
-        self.video_model = v_seq_model.Vgg_face_sequence_model(nhid=32, nlayers=2)
-        self.audio_model = a_seq_model.AudioFB_sequence_model(nhid=32, nlayers=2)
+        self.video_model = v_seq_model.Vgg_face_sequence_model(nhid=32, nlayers=1)
+        self.audio_model = a_seq_model.AudioFB_sequence_model(nhid=32, nlayers=1)
         
         self.rnn_nhid = nhid
         self.rnn_layers = nlayers
@@ -35,6 +35,10 @@ class Word_Embeddings_sequence_model(nn.Module):
             #self.classifiers.append( nn.Linear(nhid,1))
     
         self.classifier = nn.Linear(nhid,6)
+        
+        self.drop_p = 0.16
+        self.fdrop = (1.0-self.drop_p)
+        self.embedding_dropout = torch.nn.Dropout2d(p=self.drop_p)
 
 
 
@@ -120,6 +124,15 @@ class Word_Embeddings_sequence_model(nn.Module):
             rand_start = 0
 
         cropped_input = transcripts.narrow(1,rand_start,seq_window).contiguous().view(transcripts_sizes[0], seq_window)
+        
+        #word dropout
+        if self.training:
+            unknownToken = 1
+            set_word_to_unknown = np.random.uniform(size=cropped_input.size()) > 0.9
+            for i in range(cropped_input.size()[0]):
+                for j in range(cropped_input.size()[1]):
+                    if set_word_to_unknown[i][j]:
+                        cropped_input[i][j] = unknownToken
 
         if eval == False:
             cropped_input = torch.autograd.Variable(cropped_input).cuda()
@@ -128,6 +141,15 @@ class Word_Embeddings_sequence_model(nn.Module):
 
         embeddings = self.embedding(cropped_input)
         #print("embeddings size", embeddings.size())
+        #dropout entire words for face_embedding and audio_embedding
+
+        if self.training:
+            s = face_embeddings.size()
+            face_embeddings= self.embedding_dropout(face_embeddings.unsqueeze(2)).view(s) * self.fdrop
+            
+            s = audio_embeddings.size()
+            audio_embeddings= self.embedding_dropout(audio_embeddings.unsqueeze(2)).view(s) * self.fdrop
+        
         embeddings = torch.cat([embeddings, face_embeddings, audio_embeddings], dim=2) 
         #print("Extended embeddings size", embeddings.size())
 

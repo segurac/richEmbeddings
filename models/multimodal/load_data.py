@@ -356,12 +356,25 @@ def default_loader2(path):
 def default_loader(path):
     return Image.open(path).convert('RGB')
 
+fbank_mean = np.array([  8.88664088,   9.75809473,  10.66727166,  11.29547423,
+    11.62723067,  12.06732393,  12.48204369,  12.49050376,
+    12.29620237,  12.21208463,  12.07981649,  12.06033584,
+    12.1121762 ,  12.16704329,  12.27090414,  12.41297094,
+    12.60677777,  12.70263042,  12.69488194,  12.63210523,
+    12.66927505,  12.7872155 ,  12.77760826,  12.63536134,
+    12.46741683,  12.06496726])
 
+fbank_std = np.array([ 2.34054426,  2.25160904,  2.43023978,  2.65502675,  2.69229006,
+    2.81122666,  2.96786897,  3.01252924,  3.01525019,  2.95672199,
+    2.85721562,  2.78293008,  2.78135397,  2.80059105,  2.79493758,
+    2.78023753,  2.75251082,  2.70544177,  2.64877807,  2.60804826,
+    2.61028401,  2.62073639,  2.57993746,  2.53253271,  2.49293709,
+    2.4693248 ])
 
 def my_collate(batch):
     
     forced_min_video_seq = 2
-    forced_min_audio_seq = 10
+    forced_min_audio_seq = 14
     max_lengths_video = []
     max_lengths_audio = []
     for n in range(len(batch)):
@@ -447,6 +460,7 @@ def my_collate(batch):
         #print(n_filterbanks)
         audio_data_tensor = torch.FloatTensor(nwords, int(max_lengths_audio[n]), n_filterbanks)
         for word in range(nwords):
+            audio[word] = ( audio[word] - fbank_mean) / fbank_std
             for i, frame in enumerate(audio[word]):
                 audio_data_tensor[word,i] = torch.from_numpy(frame)
         total_audio_data.append(audio_data_tensor)

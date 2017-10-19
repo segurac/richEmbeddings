@@ -393,7 +393,7 @@ def validate(val_loader, model, criterion):
         if USE_CUDA:
             hidden = (hidden[0].cuda(), hidden[1].cuda())
  
-        y_pred = model(transcripts, faces, hidden)
+        y_pred = model(transcripts, faces, filterbanks, hidden)
  
 
         label_var = torch.autograd.Variable(target, volatile=True)        # compute y_pred

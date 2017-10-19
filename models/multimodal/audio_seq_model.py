@@ -67,7 +67,7 @@ class FeatureMapToSequence(nn.Module):
 
 class AudioFB_sequence_model(nn.Module):
 
-    def __init__(self, nhid, nlayers, audio_embedding_size=16, dropout=0.5):
+    def __init__(self, nhid, nlayers, audio_embedding_size=8, dropout=0.5):
         super(AudioFB_sequence_model, self).__init__()
         
         
@@ -103,7 +103,7 @@ class AudioFB_sequence_model(nn.Module):
     def forward(self, inputs, hidden, eval=False):
         ## Input is a sequence of faces for each user. batch dimension is in words (words, sequence, channels, height, width)
 
-        print(inputs.size())
+        #print(inputs.size())
         
         if eval == False:
             inputs = torch.autograd.Variable(inputs).cuda()
