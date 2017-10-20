@@ -22,7 +22,7 @@ def is_image_file(filename):
 
 class MultimodalReader(data.Dataset):
   
-    def __init__(self, annotations_path, transcriptions_path, fbank_path, faces_path, transform=None, target_transform=None,  preload_path=None):
+    def __init__(self, annotations_path, transcriptions_path, fbank_path, faces_path, transform=None, target_transform=None,  preload_path=None, word2id=None, id2word=None):
         
         
         self.fbank_path = fbank_path
@@ -37,8 +37,15 @@ class MultimodalReader(data.Dataset):
         self.videos = list(self.annotations['openness'].keys())
         self.traits = ["openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism", "interview"] #self.annotations.keys()
         
-        self.word2id = {}
-        self.id2word = {} 
+        if word2id is None:
+            self.word2id = {}
+            self.id2word = {}
+            self.create_word_dict = True
+        else:
+            self.word2id = word2id
+            self.id2word = id2word
+            self.create_word_dict = False
+        
         self.transcriptions_id = {}  
         self.transcriptions_ts = {}
         self.video_sequences ={}
@@ -151,7 +158,7 @@ class MultimodalReader(data.Dataset):
             word_ts = []
             ctm_data = self.load_ctm( transcriptions_path + '/' + video_id + '.ctm.clean')
             for word in ctm_data:
-                word_id = self.getWordId(word['word'])
+                word_id = self.getWordId(word['word'], self.create_word_dict)
                 word_ids.append(word_id)
                 timestamps = {}
                 timestamps['start_ts'] = word['start_ts']

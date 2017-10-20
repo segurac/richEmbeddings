@@ -127,6 +127,7 @@ class Word_Embeddings_sequence_model(nn.Module):
         
         #word dropout
         if self.training:
+        #if False:
             unknownToken = 1
             set_word_to_unknown = np.random.uniform(size=cropped_input.size()) > 0.84
             for i in range(cropped_input.size()[0]):
@@ -144,11 +145,26 @@ class Word_Embeddings_sequence_model(nn.Module):
         #dropout entire words for face_embedding and audio_embedding
 
         if self.training:
+        #if False:
             s = face_embeddings.size()
             face_embeddings= self.embedding_dropout(face_embeddings.unsqueeze(2)).view(s) * self.fdrop
             
             s = audio_embeddings.size()
             audio_embeddings= self.embedding_dropout(audio_embeddings.unsqueeze(2)).view(s) * self.fdrop
+        
+        if False:
+        #if self.training:
+            #other possibility is to put embedding to noise
+            for the_embedding in [face_embedding, audio_embedding]:
+                s = the_embedding.size()
+                mean_embedding = the_embedding.view(s[0]*s[1], s[2]).mean(0)
+                std_embedding  = the_embedding.view(s[0]*s[1], s[2]).std(0)
+                set_word_to_unknown = np.random.uniform(size=cropped_input.size()) > 0.84
+                for ii in range( s[0] ):
+                    for jj in range( s[1] ):
+                        if set_word_to_unknown[i][j]:
+                            the_embedding[ii][jj] = torch.normal( mean_embedding, std_embedding)[0]
+                    
         
         embeddings = torch.cat([embeddings, face_embeddings, audio_embeddings], dim=2) 
         #print("Extended embeddings size", embeddings.size())

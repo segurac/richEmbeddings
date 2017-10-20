@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 import argparse
 import csv
@@ -47,7 +47,7 @@ parser.add_argument(
 parser.add_argument('--workers', default=4, type=int, metavar='N', help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=90, type=int, metavar='N', help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N', help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=16, type=int, metavar='N', help='mini-batch size (default: 256)')
+parser.add_argument('-b', '--batch_size', default=16, type=int, metavar='N', help='mini-batch size (default: 256)')
 parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float, metavar='LR', help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M', help='momentum')
 parser.add_argument('--weight-decay', default=1e-4, type=float, metavar='W', help='weight decay')
@@ -59,6 +59,8 @@ parser.add_argument('--test', dest='test', action='store_true', help='evaluate m
 parser.add_argument('--pretrained', dest='pretrained', action='store_true', help='use pre-trained model')
 parser.add_argument('--cweights', default='', type=str, metavar='PATH', help='path to the file containing the list of labels')
 parser.add_argument('--softbatch', default=16, type=int, metavar='N', help='optimize parameters afer softbatch/batch_size samples')
+
+parser.add_argument('--save-path', default='./', type=str, metavar='PATH', help='path to save checkpoints')
 
 
 best_prec1 = 0
@@ -81,12 +83,12 @@ def main():
         base_path = base_path_croissant
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         reader = m_load_data.MultimodalReader(
-            base_path + '/train/annotation_training.pkl', 
-            base_path + '/train/transcripts/ctms', 
-            base_path + '/train/audios/fbank', 
+            base_path_gremlin + '/train/annotation_training.pkl', 
+            base_path_gremlin + '/train/transcripts/ctms', 
+            base_path_gremlin + '/train/audios/fbank', 
             #'/mnt/3T-NAS/csp/jobScreening_cvpr17/train/faces2/',
-            base_path + '/train/faces/vgg_features',
-            preload_path = base_path + '/train/preload/',
+            base_path_croissant + '/train/faces/vgg_features',
+            preload_path = base_path_croissant + '/train/preload/',
             transform=transforms.Compose([
                                     transforms.Scale(240),
                                     transforms.RandomSizedCrop(224),
@@ -108,7 +110,11 @@ def main():
                                     transforms.RandomHorizontalFlip(),
                                     transforms.ToTensor(),
                                     normalize,
-                                ]))
+                                ]),
+            word2id=reader.word2id, 
+            id2word=reader.id2word
+            )
+            
         reader_test = m_load_data.MultimodalReader(
             base_path_gremlin + '/test/annotation_test.pkl', 
             base_path_gremlin + '/test/transcripts/ctms', 
@@ -122,7 +128,11 @@ def main():
                                     transforms.RandomHorizontalFlip(),
                                     transforms.ToTensor(),
                                     normalize,
-                                ]))
+                                ]),
+            word2id=reader.word2id, 
+            id2word=reader.id2word
+            )
+            
         with open('serialized_reader.pickle','wb') as stream:
             pickle.dump(reader,stream)
       
@@ -326,8 +336,8 @@ def train(train_loader, model, criterion, optimizer, epoch):
         losses.update(loss.data[0], transcripts.size(0))
         #acc.update(prec1[0], transcripts.size(0))
         curr_accuracy = regression_accuracy(y_pred.data, target).cpu().numpy()[0]
-        for i, key in enumerate(train_loader.dataset.traits):
-            accs[key].update(curr_accuracy[i], transcripts.size(0))
+        for j, key in enumerate(train_loader.dataset.traits):
+            accs[key].update(curr_accuracy[j], transcripts.size(0))
 
         # compute gradient and do SGD step
         #optimizer.zero_grad()
@@ -406,8 +416,8 @@ def validate(val_loader, model, criterion):
         #acc.update( 0.5, transcripts.size(0))
         acc_mean=0
         curr_accuracy = regression_accuracy(y_pred.data, target).cpu().numpy()[0]
-        for i, key in enumerate(val_loader.dataset.traits):
-            accs[key].update(curr_accuracy[i], transcripts.size(0))
+        for j, key in enumerate(val_loader.dataset.traits):
+            accs[key].update(curr_accuracy[j], transcripts.size(0))
             acc_mean += accs[key].avg
         acc_mean = acc_mean / 6.0
         # measure elapsed time
@@ -518,10 +528,11 @@ def test(test_loader, class_to_idx, model):
     return
 
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
+def save_checkpoint(state, is_best):
+    filename=args.save_path + 'checkpoint.pth.tar'
     torch.save(state, filename)
     if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
+        shutil.copyfile(filename, args.save_path + 'model_best.pth.tar')
 
 
 class AverageMeter(object):
