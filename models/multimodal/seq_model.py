@@ -24,7 +24,16 @@ class Word_Embeddings_sequence_model(nn.Module):
         self.bidirectional = False
         self.seq_window = 100
 
-        self.rnn = nn.LSTM(embedding_size+self.video_model.face_embedding_size + self.audio_model.audio_embedding_size, nhid, nlayers, dropout=dropout, batch_first = True, bidirectional = self.bidirectional)
+        self.rnn = nn.LSTM(
+            embedding_size
+            +self.video_model.face_embedding_size 
+            + self.audio_model.audio_embedding_size, 
+            nhid, 
+            nlayers, 
+            dropout=dropout, 
+            batch_first = True, 
+            bidirectional = self.bidirectional
+            )
         #self.rnn = nn.RNN(64, nhid, nlayers, batch_first = True, bidirectional = False)
         #self.rnn = nn.LSTM(64, nhid, nlayers, batch_first = True, bidirectional = False)
 
@@ -36,15 +45,35 @@ class Word_Embeddings_sequence_model(nn.Module):
     
         self.classifier = nn.Linear(nhid,6)
         
-        self.drop_p = 0.16
+        self.drop_p = 0.5
         self.fdrop = (1.0-self.drop_p)
         self.embedding_dropout = torch.nn.Dropout2d(p=self.drop_p)
 
 
 
-    def forward(self, transcripts, faces, filterbanks, hidden, eval=False):
+    def forward(self, transcripts, faces, filterbanks, hidden, train_text=True, train_audio=True, train_video=True, eval=False):
         
         seq_length = transcripts.size()[1]
+        
+        
+        if self.training == True:
+            if train_audio:
+                self.audio_model.train()
+            else:
+                self.audio_model.eval()
+            if train_video:
+                self.video_model.train()
+            else:
+                self.video_model.eval()
+            if train_text:
+                self.embedding.train()
+            else:
+                self.embedding.eval()
+        else:
+            self.audio_model.eval()
+            self.video_model.eval()
+            self.embedding.eval()
+            
         
         
         
@@ -129,11 +158,11 @@ class Word_Embeddings_sequence_model(nn.Module):
         if self.training:
         #if False:
             unknownToken = 1
-            set_word_to_unknown = np.random.uniform(size=cropped_input.size()) > 0.84
+            set_word_to_unknown = np.random.uniform(size=cropped_input.size()) > 0.95
             for i in range(cropped_input.size()[0]):
                 for j in range(cropped_input.size()[1]):
-                    if set_word_to_unknown[i][j]:
-                        cropped_input[i][j] = unknownToken
+                    if set_word_to_unknown[i,j]:
+                        cropped_input[i,j] = unknownToken
 
         if eval == False:
             cropped_input = torch.autograd.Variable(cropped_input).cuda()
@@ -144,29 +173,40 @@ class Word_Embeddings_sequence_model(nn.Module):
         #print("embeddings size", embeddings.size())
         #dropout entire words for face_embedding and audio_embedding
 
-        if self.training:
-        #if False:
-            s = face_embeddings.size()
-            face_embeddings= self.embedding_dropout(face_embeddings.unsqueeze(2)).view(s) * self.fdrop
-            
-            s = audio_embeddings.size()
-            audio_embeddings= self.embedding_dropout(audio_embeddings.unsqueeze(2)).view(s) * self.fdrop
-        
-        if False:
         #if self.training:
-            #other possibility is to put embedding to noise
-            for the_embedding in [face_embedding, audio_embedding]:
-                s = the_embedding.size()
-                mean_embedding = the_embedding.view(s[0]*s[1], s[2]).mean(0)
-                std_embedding  = the_embedding.view(s[0]*s[1], s[2]).std(0)
-                set_word_to_unknown = np.random.uniform(size=cropped_input.size()) > 0.84
-                for ii in range( s[0] ):
-                    for jj in range( s[1] ):
-                        if set_word_to_unknown[i][j]:
-                            the_embedding[ii][jj] = torch.normal( mean_embedding, std_embedding)[0]
-                    
+        #if False:
+            #s = face_embeddings.size()
+            #face_embeddings= self.embedding_dropout(face_embeddings.unsqueeze(2)).view(s) * self.fdrop
+            
+            #s = audio_embeddings.size()
+            #audio_embeddings= self.embedding_dropout(audio_embeddings.unsqueeze(2)).view(s) * self.fdrop
         
-        embeddings = torch.cat([embeddings, face_embeddings, audio_embeddings], dim=2) 
+        #if False:
+        ##if self.training:
+            ##other possibility is to put embedding to noise
+            #for the_embedding in [face_embeddings, audio_embeddings]:
+                #s = the_embedding.size()
+
+                #mean_embedding = the_embedding.view( (s[0]*s[1], s[2]) ).mean(0)
+                #std_embedding  = the_embedding.view((s[0]*s[1], s[2])).std(0)
+                #set_word_to_unknown = np.random.uniform(size=cropped_input.size()) > self.drop_p
+                #for ii in range( s[0] ):
+                    #for jj in range( s[1] ):
+                        #if set_word_to_unknown[i,j]:
+                            #kk = (torch.normal( mean_embedding, std_embedding * 0.3)[0]).data.cpu().numpy()
+                            #kk2 = torch.FloatTensor(kk).cuda()
+                            #the_embedding[ii,jj] = kk2 
+        
+        embeddings = torch.cat([embeddings, face_embeddings, audio_embeddings], dim=2)
+        #embeddings = torch.cat([face_embeddings], dim=2) 
+        #np_emb = embeddings.cpu()
+        #with open('embedding.pickle','wb') as stream:
+            #import pickle
+            #pickle.dump(np_emb, stream)
+        #with open('petazeta','rb') as stream:
+            #pickle.load(stream)
+        
+        
         #print("Extended embeddings size", embeddings.size())
 
         ## feed to the RNN

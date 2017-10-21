@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-import torchvision.models as models
-import VGG_FACE
+#import torchvision.models as models
+#import VGG_FACE
 from torch.autograd import Variable
 import gc
 import numpy as np
@@ -19,6 +19,7 @@ class FeatureMapToSequence(nn.Module):
         
         self.feat_extract = nn.Sequential(
             nn.Linear(128*4,256),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(256,64),
@@ -79,9 +80,11 @@ class AudioFB_sequence_model(nn.Module):
 	nn.Conv2d(32,64,3),
 	nn.ReLU(),
         nn.MaxPool2d(1, 2),
+        nn.BatchNorm2d(64),
 	nn.Conv2d(64,128,3),
 	nn.ReLU(),
         nn.MaxPool2d(2, 2), #(depende_de_n_frames,4 features)
+        nn.BatchNorm2d(128)
         )
         
         #tengo 64 * nframes * 4 features, pero yo necesito (nframes, 64*4)

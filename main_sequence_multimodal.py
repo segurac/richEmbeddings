@@ -19,6 +19,9 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data as data
 import torchvision.datasets as datasets
+
+#cudnn.enabled = False
+cudnn.benchmark = False
 #import torchvision.models as models
 #import torchvision.transforms as transforms
 #from PIL import Image
@@ -226,7 +229,7 @@ def main():
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
-    cudnn.benchmark = True
+    #cudnn.benchmark = True
 
 
     if args.test:
@@ -309,8 +312,19 @@ def train(train_loader, model, criterion, optimizer, epoch):
         hidden = model.init_hidden(transcripts.size()[0])
         if USE_CUDA:
             hidden = (hidden[0].cuda(), hidden[1].cuda())
+            
+        train_text=False
+        train_audio=False
+        train_video=False   
+        urand = np.random.uniform()
+        if urand < 1.0/3.0:
+            train_text = True
+        elif urand > 2.0/3.0:
+            train_audio = True
+        else:
+            train_video = True
  
-        y_pred = model(transcripts, faces, filterbanks, hidden)
+        y_pred = model(transcripts, faces, filterbanks, hidden, train_text = train_text, train_audio=train_audio, train_video=train_video)
  
             
         ##print(images)
