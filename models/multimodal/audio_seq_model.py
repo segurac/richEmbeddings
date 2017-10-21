@@ -19,7 +19,7 @@ class FeatureMapToSequence(nn.Module):
         
         self.feat_extract = nn.Sequential(
             nn.Linear(128*4,256),
-            nn.BatchNorm1d(256),
+            #nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(256,64),
@@ -80,11 +80,11 @@ class AudioFB_sequence_model(nn.Module):
 	nn.Conv2d(32,64,3),
 	nn.ReLU(),
         nn.MaxPool2d(1, 2),
-        nn.BatchNorm2d(64),
+        #nn.BatchNorm2d(64),
 	nn.Conv2d(64,128,3),
 	nn.ReLU(),
         nn.MaxPool2d(2, 2), #(depende_de_n_frames,4 features)
-        nn.BatchNorm2d(128)
+        #nn.BatchNorm2d(128)
         )
         
         #tengo 64 * nframes * 4 features, pero yo necesito (nframes, 64*4)
@@ -94,7 +94,7 @@ class AudioFB_sequence_model(nn.Module):
         self.feature_size = 64                    
         #self.rnn = nn.RNN(64, nhid, nlayers, dropout=dropout, batch_first = True, bidirectional = False)
         #self.rnn = nn.RNN(64, nhid, nlayers, batch_first = True, bidirectional = False)
-        self.rnn = nn.LSTM(self.feature_size, nhid, nlayers, batch_first = True, bidirectional = False)
+        self.rnn = nn.LSTM(self.feature_size, nhid, nlayers, batch_first = True, bidirectional = False, dropout=0.2)
         self.classifier = nn.Linear(nhid,self.audio_embedding_size)
 
         
@@ -123,7 +123,8 @@ class AudioFB_sequence_model(nn.Module):
         ## feed to the RNN
         output, hidden = self.rnn(features, hidden)
         
-        #output = self.classifier(output[:,-1,:])
+        output = self.classifier(output[:,-1,:])
+        return output
         
         #progressive weights
         #n_outputs = output.size()[1]

@@ -213,22 +213,15 @@ class Word_Embeddings_sequence_model(nn.Module):
         output, hidden = self.rnn(embeddings, hidden)
         ## since we set batch_first=True, output size is (batch, seq_length, hidden_size * num_directions)
                 
+        final_output = self.classifier(output[:,-1,:])
+        return final_output
+        
         n_outputs = output.size()[1]
         outputs = []
         for o in range(n_outputs):
             outputs.append( self.classifier(output[:,o,:])  )
         final_output = torch.mean(torch.stack(outputs, dim=2), dim=2).view(-1,6)
 
-        
-        
-        #total_output = []
-        #for classifier in self.classifiers:
-            #outputs = []
-            #for o in range(n_outputs):
-                #outputs.append( classifier(output[:,o,:])  )
-            #output = torch.mean(torch.stack(outputs, dim=2), dim=2).view(-1,1)
-            #total_output.append(output)
-        #final_output = torch.stack(total_output, dim=2).view(-1,6)
         return final_output
       
     def init_hidden(self, bsz):

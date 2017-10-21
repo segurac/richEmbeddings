@@ -51,7 +51,7 @@ class Vgg_face_sequence_model(nn.Module):
         self.feature_size = 64                    
         #self.rnn = nn.RNN(64, nhid, nlayers, dropout=dropout, batch_first = True, bidirectional = False)
         #self.rnn = nn.RNN(64, nhid, nlayers, batch_first = True, bidirectional = False)
-        self.rnn = nn.LSTM(self.feature_size, nhid, nlayers, batch_first = True, bidirectional = False)
+        self.rnn = nn.LSTM(self.feature_size, nhid, nlayers, batch_first = True, bidirectional = False, dropout=0.2)
         self.classifier = nn.Linear(nhid,self.face_embedding_size)
 
         self.feat_extract = torch.nn.Sequential(
@@ -118,7 +118,8 @@ class Vgg_face_sequence_model(nn.Module):
         ## feed to the RNN
         output, hidden = self.rnn(features, hidden)
         
-        #output = self.classifier(output[:,-1,:])
+        output = self.classifier(output[:,-1,:])
+        return output
         
         #progressive weights
         #n_outputs = output.size()[1]
