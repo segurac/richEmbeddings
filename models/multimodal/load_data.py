@@ -52,13 +52,15 @@ class MultimodalReader(data.Dataset):
         
         self.padding = self.getWordId('PADDING_TOKEN')
         self.unknownToken = self.getWordId('UNKNOWN_TOKEN')
+        self.silenceToken = self.getWordId('SILENCE_TOKEN')
         
+        
+        print("Reading video metada")
+        self.read_video_metadata(transcriptions_path + '/../../')
         print("Reading transcriptions")
         self.read_all_ctms(transcriptions_path)
         print("Scanning faces")
         self.build_faces_dir_tree(faces_path)
-        print("Reading video metada")
-        self.read_video_metadata(transcriptions_path + '/../../')
         print("Segmenting audio and video according to ctms")
         self.assing_frames_to_words(faces_path, fbank_path)
         
@@ -77,9 +79,14 @@ class MultimodalReader(data.Dataset):
             self.video_sequences[video_id] = images
         
     def load_ctm(self, ctm_path):
+        #/mnt/3T-NAS/Databases/jobScreening_cvpr17/test/transcripts/ctms/aaylz9A9K80.000.mp4.ctm.clean
+        ctm_name = os.path.basename(ctm_path)
+        video_id = ctm_name.replace(".ctm.clean","").strip()
         data = []
         try:
-            with open(ctm_path, 'r') as stream:
+            
+            old_end_ts=0.0
+            with open(ctm_path , 'r') as stream:
                 for line in stream:
                     ctm_line = line.strip().split()
                     spk_id = ctm_line[0]
@@ -91,13 +98,25 @@ class MultimodalReader(data.Dataset):
                         confidence = ctm_line[5]
                     else:
                         confidence = 1.0
+                        
+                    start_ts = float(start_ts)
+                    end_ts = float(end_ts) + float(start_ts)
+                    if start_ts > old_end_ts + 0.1 :
+                        sil_data = {}
+                        sil_data['start_ts'] =old_end_ts
+                        sil_data['end_ts'] = start_ts
+                        sil_data['word'] = "SILENCE_TOKEN"
+                        data.append(sil_data)
+                        
                     new_data = {}
-                    new_data['start_ts'] = float(start_ts)
-                    new_data['end_ts'] = float(end_ts) + float(start_ts)
+                    new_data['start_ts'] = start_ts
+                    new_data['end_ts'] = end_ts
                     if word == "<unk>":
                         word = "UNKNOWN_TOKEN"
                     new_data['word'] = str(word)
                     data.append(new_data)
+                    old_end_ts = end_ts
+                    
         except:
             ## test reading the ASR transciption
             try:
@@ -110,6 +129,7 @@ class MultimodalReader(data.Dataset):
                 print("CTM file not found", ctm_path)
                 print("Trying with", new_ctm_path)
                 
+                old_end_ts=0.0
                 with open(new_ctm_path, 'r') as stream:
                     for line in stream:
                         #print(line)
@@ -120,22 +140,33 @@ class MultimodalReader(data.Dataset):
                         word = ctm_line[3]
                         confidence = ctm_line[4]
 
+                        start_ts = float(start_ts)
+                        end_ts = float(end_ts) + float(start_ts)
+                        
+                        if start_ts > old_end_ts + 0.1 :
+                            sil_data = {}
+                            sil_data['start_ts'] =old_end_ts
+                            sil_data['end_ts'] = start_ts
+                            sil_data['word'] = "SILENCE_TOKEN"
+                            data.append(sil_data)
+                        
                         new_data = {}
-                        new_data['start_ts'] = float(start_ts)
-                        new_data['end_ts'] = float(end_ts) + float(start_ts)
+                        new_data['start_ts'] = start_ts
+                        new_data['end_ts'] = end_ts
                         if word == "<unk>":
                             word = "UNKNOWN_TOKEN"
                         new_data['word'] = str(word)
                         data.append(new_data)
+                        old_end_ts = end_ts
             except:
                 #print("CTM file not found", ctm_path)
-                #print("CTM file from ASR not found", new_ctm_path)
-                print("Creating one single <unk> spanning the first 10 seconds")
-                new_data = {}
-                new_data['start_ts'] = float(0.0)
-                new_data['end_ts'] = float(10.0) + float(0.0) 
-                new_data['word'] = "UNKNOWN_TOKEN"
-                data.append(new_data)
+                print("CTM file from ASR not found", new_ctm_path)
+                #print("Creating one single <unk> spanning the first 10 seconds")
+                #new_data = {}
+                #new_data['start_ts'] = float(0.0)
+                #new_data['end_ts'] = float(10.0) + float(0.0) 
+                #new_data['word'] = "UNKNOWN_TOKEN"
+                #data.append(new_data)
         if len(data) == 0:
             print("Error no transcription", ctm_path)
             #import sys
@@ -143,9 +174,15 @@ class MultimodalReader(data.Dataset):
             print("Creating one single <unk> spanning the first 5 seconds")
             new_data = {}
             new_data['start_ts'] = float(0.0)
-            new_data['end_ts'] = float(5.0) + float(0.0) 
+            new_data['end_ts'] = self.video_duration[video_id]
             new_data['word'] = "UNKNOWN_TOKEN"
             data.append(new_data)
+        if self.video_duration[video_id] > data[-1]['end_ts'] + 0.1:
+            sil_data = {}
+            sil_data['start_ts'] = data[-1]['end_ts']
+            sil_data['end_ts'] = self.video_duration[video_id]
+            sil_data['word'] = "SILENCE_TOKEN"
+            data.append(sil_data)
         return data
         
         
@@ -251,6 +288,7 @@ class MultimodalReader(data.Dataset):
             for line in stream:
                 video_id, duration = line.strip().split()
                 duration = float(duration)
+                video_id = video_id.replace(".wav","").strip()
                 self.video_duration[video_id] = duration
                 
         with open(metadata_path + '/video_fps.txt','r') as stream:
@@ -258,8 +296,6 @@ class MultimodalReader(data.Dataset):
                 video_id, fps = line.strip().split()
                 fps = float(fps)
                 self.video_fps[video_id] = fps
-        
-    
 
     def __len__(self):
         return len(self.videos)
