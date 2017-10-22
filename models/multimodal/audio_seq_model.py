@@ -90,13 +90,21 @@ class AudioFB_sequence_model(nn.Module):
         #tengo 64 * nframes * 4 features, pero yo necesito (nframes, 64*4)
         self.feat_extract = FeatureMapToSequence()
 
+        self.bidirectional = True
+        if self.bidirectional:
+            self.num_directions = 2
+        else:
+            self.num_directions = 1
         
         self.feature_size = 64                    
         #self.rnn = nn.RNN(64, nhid, nlayers, dropout=dropout, batch_first = True, bidirectional = False)
         #self.rnn = nn.RNN(64, nhid, nlayers, batch_first = True, bidirectional = False)
-        self.rnn = nn.LSTM(self.feature_size, nhid, nlayers, batch_first = True, bidirectional = False, dropout=0.2)
-        self.classifier = nn.Linear(nhid,self.audio_embedding_size)
+        self.rnn = nn.LSTM(self.feature_size, nhid, nlayers, batch_first = True, bidirectional = self.bidirectional, dropout=0.2)
+        #self.classifier = nn.Linear(nhid  * self.num_directions, self.audio_embedding_size)
 
+        self.final_feature_size = 128
+        self.rnn_features = nn.Linear(nhid * self.num_directions, self.final_feature_size)
+        self.classifier = nn.Linear(self.final_feature_size,self.audio_embedding_size)
         
         self.rnn_nhid = nhid
         self.rnn_layers = nlayers
@@ -135,21 +143,25 @@ class AudioFB_sequence_model(nn.Module):
             #outputs.append( self.classifier(output[:,o,:])  * myweights[o])
         #output = torch.sum(torch.stack(outputs, dim=2), dim=2).view(-1,7)
         
+        #n_outputs = output.size()[1]
+        #outputs = []
+        #for o in range(n_outputs):
+            #outputs.append( self.classifier(output[:,o,:])  )
+        #output = torch.mean(torch.stack(outputs, dim=2), dim=2).view(-1, self.audio_embedding_size)
+        #return output
+    
         n_outputs = output.size()[1]
         outputs = []
         for o in range(n_outputs):
-            outputs.append( self.classifier(output[:,o,:])  )
-        output = torch.mean(torch.stack(outputs, dim=2), dim=2).view(-1, self.audio_embedding_size)
-        
-        
-        
-        #print("output", output.size())
-        #gc.collect()
-        return output
+            outputs.append( self.rnn_features(output[:,o,:])  )
+        final_feature = torch.mean(torch.stack(outputs, dim=2), dim=2).view(-1,self.final_feature_size)
+
+        final_output = self.classifier(final_feature)
+        return final_output
       
     def init_hidden(self, bsz):
-        hidden = (Variable(torch.zeros(self.rnn_layers, bsz, self.rnn_nhid)),
-                Variable(torch.zeros(self.rnn_layers, bsz, self.rnn_nhid)))
+        hidden = (Variable(torch.zeros(self.rnn_layers  * self.num_directions, bsz, self.rnn_nhid)),
+                Variable(torch.zeros(self.rnn_layers  * self.num_directions, bsz, self.rnn_nhid)))
         #hidden = Variable(torch.zeros(self.rnn_layers, bsz, self.rnn_nhid))
         return hidden
       

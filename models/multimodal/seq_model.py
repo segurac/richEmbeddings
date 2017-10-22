@@ -21,7 +21,7 @@ class Word_Embeddings_sequence_model(nn.Module):
         
         self.rnn_nhid = nhid
         self.rnn_layers = nlayers
-        self.bidirectional = False
+        self.bidirectional = True
         if self.bidirectional:
             self.num_directions = 2
         else:
@@ -47,7 +47,7 @@ class Word_Embeddings_sequence_model(nn.Module):
         #for i in range(6):
             #self.classifiers.append( nn.Linear(nhid,1))
     
-        self.final_feature_size = 64
+        self.final_feature_size = 128
         self.rnn_features = nn.Linear(nhid * self.num_directions, self.final_feature_size)
         self.classifier = nn.Linear(self.final_feature_size,6)
         
