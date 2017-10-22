@@ -16,12 +16,16 @@ class Word_Embeddings_sequence_model(nn.Module):
         super(Word_Embeddings_sequence_model, self).__init__()
 
         self.embedding = nn.Embedding(vocab_size, embedding_size)
-        self.video_model = v_seq_model.Vgg_face_sequence_model(nhid=32, nlayers=1)
-        self.audio_model = a_seq_model.AudioFB_sequence_model(nhid=32, nlayers=1)
+        self.video_model = v_seq_model.Vgg_face_sequence_model(nhid=64, nlayers=1)
+        self.audio_model = a_seq_model.AudioFB_sequence_model(nhid=64, nlayers=1)
         
         self.rnn_nhid = nhid
         self.rnn_layers = nlayers
         self.bidirectional = False
+        if self.bidirectional:
+            self.num_directions = 2
+        else:
+            self.num_directions = 1
         self.seq_window = 100
 
         self.rnn = nn.LSTM(
@@ -43,7 +47,9 @@ class Word_Embeddings_sequence_model(nn.Module):
         #for i in range(6):
             #self.classifiers.append( nn.Linear(nhid,1))
     
-        self.classifier = nn.Linear(nhid,6)
+        self.final_feature_size = 64
+        self.rnn_features = nn.Linear(nhid * self.num_directions, self.final_feature_size)
+        self.classifier = nn.Linear(self.final_feature_size,6)
         
         self.drop_p = 0.5
         self.fdrop = (1.0-self.drop_p)
@@ -213,20 +219,32 @@ class Word_Embeddings_sequence_model(nn.Module):
         output, hidden = self.rnn(embeddings, hidden)
         ## since we set batch_first=True, output size is (batch, seq_length, hidden_size * num_directions)
                 
-        final_output = self.classifier(output[:,-1,:])
-        return final_output
+        #final_output = self.classifier(output[:,-1,:])
+        #return final_output
         
+        #n_outputs = output.size()[1]
+        #outputs = []
+        #for o in range(n_outputs):
+            #outputs.append( self.classifier(output[:,o,:])  )
+        #final_output = torch.mean(torch.stack(outputs, dim=2), dim=2).view(-1,6)
+
+        #return final_output
+
         n_outputs = output.size()[1]
         outputs = []
         for o in range(n_outputs):
-            outputs.append( self.classifier(output[:,o,:])  )
-        final_output = torch.mean(torch.stack(outputs, dim=2), dim=2).view(-1,6)
+            outputs.append( self.rnn_features(output[:,o,:])  )
+        final_feature = torch.mean(torch.stack(outputs, dim=2), dim=2).view(-1,self.final_feature_size)
 
+        final_output = self.classifier(final_feature)
         return final_output
+
+
+
       
     def init_hidden(self, bsz):
-        hidden = (Variable(torch.zeros(self.rnn_layers, bsz, self.rnn_nhid)),
-                Variable(torch.zeros(self.rnn_layers, bsz, self.rnn_nhid)))
+        hidden = (Variable(torch.zeros(self.rnn_layers * self.num_directions, bsz, self.rnn_nhid)),
+                Variable(torch.zeros(self.rnn_layers * self.num_directions, bsz, self.rnn_nhid)))
         #hidden = Variable(torch.zeros(self.rnn_layers, bsz, self.rnn_nhid))
         return hidden
       

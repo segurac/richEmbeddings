@@ -91,7 +91,7 @@ def main():
             base_path_gremlin + '/train/audios/fbank', 
             #'/mnt/3T-NAS/csp/jobScreening_cvpr17/train/faces2/',
             base_path_croissant + '/train/faces/vgg_features',
-            preload_path = base_path_croissant + '/train/preload.align/',
+            preload_path = base_path_croissant + '/train/preload/',
             transform=transforms.Compose([
                                     transforms.Scale(240),
                                     transforms.RandomSizedCrop(224),
@@ -106,7 +106,7 @@ def main():
             base_path_gremlin + '/validation/audios/fbank', 
             #'/mnt/3T-NAS/csp/jobScreening_cvpr17/validation/faces2/',
             base_path_croissant + '/validation/faces/vgg_features',
-            preload_path = base_path_croissant + '/validation/preload.align/',
+            preload_path = base_path_croissant + '/validation/preload/',
             transform=transforms.Compose([
                                     transforms.Scale(240),
                                     transforms.RandomSizedCrop(224),
@@ -124,7 +124,7 @@ def main():
             base_path_gremlin + '/test/audios/fbank', 
             #'/mnt/3T-NAS/csp/jobScreening_cvpr17/test/faces2/',
             base_path_croissant + '/test/faces/vgg_features',
-            preload_path = base_path_croissant + '/test/preload.align/',
+            preload_path = base_path_croissant + '/test/preload/',
             transform=transforms.Compose([
                                     transforms.Scale(240),
                                     transforms.RandomSizedCrop(224),
@@ -136,29 +136,29 @@ def main():
             id2word=reader.id2word
             )
             
-        with open('serialized_reader_align.pickle','wb') as stream:
+        with open('serialized_reader.pickle','wb') as stream:
             pickle.dump(reader,stream)
       
-        with open('serialized_reader_validation_align.pickle','wb') as stream:
+        with open('serialized_reader_validation.pickle','wb') as stream:
               pickle.dump(reader_validation,stream)
 
-        with open('serialized_reader_test_align.pickle','wb') as stream:
+        with open('serialized_reader_test.pickle','wb') as stream:
                   pickle.dump(reader_test,stream)
         return     
 
     else:
         print("Loading serialized_reader")
-        with open('serialized_reader_align.pickle','rb') as stream:
+        with open('serialized_reader.pickle','rb') as stream:
             reader = pickle.load(stream)    
         print("Loaded serialized_reader")
         
         print("Loading serialized_reader_validation")
-        with open('serialized_reader_validation_align.pickle','rb') as stream:
+        with open('serialized_reader_validation.pickle','rb') as stream:
             reader_validation = pickle.load(stream)    
         print("Loaded serialized_reader_validation")
 
         print("Loading serialized_reader_test")
-        with open('serialized_reader_test_align.pickle','rb') as stream:
+        with open('serialized_reader_test.pickle','rb') as stream:
             reader_test = pickle.load(stream)    
         print("Loaded serialized_reader_test")
         
@@ -210,7 +210,7 @@ def main():
 
     if args.arch == "words_embeddings":
         #model = m_seq_model.Vgg_face_sequence_model(nhid=32, nlayers=2)
-        model = m_seq_model.Word_Embeddings_sequence_model(vocab_size=len(train_loader.dataset.word2id),embedding_size=32,
+        model = m_seq_model.Word_Embeddings_sequence_model(vocab_size=len(train_loader.dataset.word2id),embedding_size=16,
             nhid=256, nlayers=2)
 
     #model = torch.nn.DataParallel(model).cuda()

@@ -118,8 +118,8 @@ class Vgg_face_sequence_model(nn.Module):
         ## feed to the RNN
         output, hidden = self.rnn(features, hidden)
         
-        output = self.classifier(output[:,-1,:])
-        return output
+        #output = self.classifier(output[:,-1,:])
+        #return output
         
         #progressive weights
         #n_outputs = output.size()[1]

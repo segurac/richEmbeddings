@@ -68,7 +68,7 @@ class FeatureMapToSequence(nn.Module):
 
 class AudioFB_sequence_model(nn.Module):
 
-    def __init__(self, nhid, nlayers, audio_embedding_size=8, dropout=0.5):
+    def __init__(self, nhid, nlayers, audio_embedding_size=16, dropout=0.5):
         super(AudioFB_sequence_model, self).__init__()
         
         
@@ -123,8 +123,8 @@ class AudioFB_sequence_model(nn.Module):
         ## feed to the RNN
         output, hidden = self.rnn(features, hidden)
         
-        output = self.classifier(output[:,-1,:])
-        return output
+        #output = self.classifier(output[:,-1,:])
+        #return output
         
         #progressive weights
         #n_outputs = output.size()[1]
